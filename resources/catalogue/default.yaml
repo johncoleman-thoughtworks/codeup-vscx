@@ -417,35 +417,55 @@ patterns:
     languages: [java, kotlin, scala, csharp, typescript, typescriptreact, python]
     defaultSeverity: high
     hint: |
-      A class hierarchy where the sibling subclasses model roles or
-      capabilities that real-world instances can hold simultaneously, not
-      mutually-exclusive species in an is-a tree. Classic example:
-      `Person → Employee, Customer` when one person can be both an
-      employee and a customer of the same company. The hierarchy is
-      asserting mutual exclusion that the domain does not honour, so
-      anything that's both has to be modelled awkwardly or duplicated.
+      ALWAYS apply this check when the primary file declares `extends` or
+      `implements` (or the language equivalent) and same-package / nearby
+      neighbor files declare sibling subclasses of the same parent. Do
+      NOT skip this check just because you don't recognise the specific
+      domain — reason by analogy from the examples below.
 
-      Structural signals that flag the case even without specific
-      domain knowledge:
+      The pattern: a class hierarchy where the sibling subclasses model
+      roles or capabilities that real-world instances can hold
+      simultaneously, not mutually-exclusive species in an is-a tree.
+      The hierarchy asserts mutual exclusion that the domain does not
+      honour, so anything that's both has to be modelled awkwardly or
+      duplicated.
+
+      Concrete examples (use to reason by analogy):
+        - `Person → Employee, Customer` — one person can be both.
+        - `Vehicle → Cargo, Passenger` — modified pickup trucks carry
+          both at once.
+        - `Account → Savings, Checking` — many banks allow one account
+          to act as both.
+        - `Outlet → Restaurant, GroceryStore` — a single retail outlet
+          might genuinely be both (hotel café, convenience store with
+          hot food, supermarket with a restaurant inside).
+        - `Building → Residential, Commercial` — mixed-use buildings
+          are both.
+        - `User → Author, Reviewer` — most platforms let one user be
+          both at once.
+
+      Structural signals (independent of domain knowledge):
         - Subclasses add orthogonal state (one carries fields meaningful
           only to role A, the other only to role B) rather than refining
           the base class's concepts.
-        - Subclasses are noun-categories that a real instance might
-          *play* (capabilities, roles, statuses) rather than narrower
+        - Subclasses are noun-categories an instance might *play*
+          (capabilities, roles, statuses) rather than narrower
           kinds-of-thing (e.g. `Circle` is a kind of `Shape`).
         - Sibling subclasses override no base behaviour — inheritance is
           just acting as a discriminator tag.
-        - The base class is a primitive bag (name, id, description)
-          with no behaviour to inherit.
+        - The base class is a primitive bag (name, id, description) with
+          no behaviour to inherit.
 
-      Reasoning prompt to apply: "could a real-world instance reasonably
-      be more than one of these subtypes at once?" If yes, this is the
-      pattern. Refactor to composition: a stable identity class carrying
+      Mandatory reasoning step before deciding NOT to report: name the
+      subclasses you see, then ask "could a real-world instance
+      reasonably be more than one of these subtypes at once?" If yes,
+      REPORT this finding with the subclass names in your explanation.
+      Refactor direction: composition — a stable identity class carrying
       a Set of capability/role components, or explicit role objects
       attached to the base entity that exists independently.
 
-      Be conservative for narrowly-domain-specific cases the catalogue
-      cannot judge (e.g. proprietary entity taxonomies in finance,
+      Be conservative only for narrowly-domain-specific taxonomies the
+      catalogue cannot judge (e.g. proprietary entity types in finance,
       healthcare); rely on confirmed exemplars in the knowledge base
       for those.
 

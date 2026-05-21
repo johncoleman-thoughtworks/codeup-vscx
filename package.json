@@ -1,8 +1,8 @@
 {
   "name": "codeup",
   "displayName": "Codeup",
-  "description": "Architectural anti-pattern findings for your codebase, powered by Claude.",
-  "version": "1.0.0",
+  "description": "Coding anti-pattern findings for your codebase, powered by Claude.",
+  "version": "1.0.1",
   "publisher": "johncoleman-thoughtworks",
   "license": "MIT",
   "repository": {

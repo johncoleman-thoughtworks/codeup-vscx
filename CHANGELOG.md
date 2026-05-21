@@ -2,6 +2,31 @@
 
 All notable changes to Codeup are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); Codeup uses [Semantic Versioning](https://semver.org/).
 
+## 1.0.1 — 2026-05-21
+
+### Fixed
+
+- `non-exclusive-subtypes` was not firing on real codebases after the
+  catalogue was genericized in 1.0.0. The previous hint relied on a
+  single example as the textual anchor for Claude's reasoning; once
+  the example was stripped to keep the catalogue project-neutral,
+  detection collapsed. Hint rewritten with six varied concrete examples
+  (Person/Employee/Customer, Vehicle/Cargo/Passenger, Account/Savings/
+  Checking, Outlet/Restaurant/GroceryStore, Building/Residential/
+  Commercial, User/Author/Reviewer) plus an explicit "always apply this
+  check when extends/implements is present" instruction and a mandatory
+  reasoning step.
+- Cross-file context was invisible for JVM and C# files that
+  reference siblings within the same package (no explicit `import`).
+  Same-package siblings are now included as `samePackage` neighbors,
+  filling any spare slots after the import-graph picks. Without this,
+  inheritance-shaped patterns like `non-exclusive-subtypes` had no way
+  to see the sibling subclasses.
+
+### Tweaked
+
+- `displayName` description trimmed to "Coding anti-pattern findings…".
+
 ## 1.0.0 — 2026-05-21
 
 First public release. Surfaces architectural anti-patterns in your codebase, powered by the Anthropic API, with findings persisted as YAML files under `.codeup/` so they travel with the repo and accumulate the team's decisions.

@@ -200,13 +200,31 @@ export class ScanRunner {
 
   private async gatherNeighbors(ctx: RootContext, entry: FileEntry): Promise<NeighborFile[]> {
     const { imports, importedBy } = neighborsOf(ctx.graph, entry.path);
-    const picks: { path: string; relation: 'imports' | 'importedBy' }[] = [];
+    const picks: { path: string; relation: 'imports' | 'importedBy' | 'samePackage' }[] = [];
     const iA = imports.slice(0, MAX_NEIGHBORS);
     const iB = importedBy.slice(0, MAX_NEIGHBORS);
     for (let i = 0; i < MAX_NEIGHBORS && picks.length < MAX_NEIGHBORS; i++) {
       if (i < iA.length) picks.push({ path: iA[i], relation: 'imports' });
       if (i < iB.length && picks.length < MAX_NEIGHBORS) picks.push({ path: iB[i], relation: 'importedBy' });
     }
+
+    // Same-package fallback: many JVM / C# files reference each other in the
+    // same package without an explicit import. Without this, inheritance and
+    // role-based patterns are invisible to the LLM.
+    if (picks.length < MAX_NEIGHBORS) {
+      const taken = new Set(picks.map((p) => p.path).concat(entry.path));
+      const dir = entry.path.includes('/') ? entry.path.slice(0, entry.path.lastIndexOf('/')) : '';
+      const siblings = ctx.index.files
+        .filter((f) => !taken.has(f.path))
+        .filter((f) => (f.path.includes('/') ? f.path.slice(0, f.path.lastIndexOf('/')) : '') === dir)
+        .filter((f) => f.language === entry.language) // only meaningful for same-language siblings
+        .sort((a, b) => a.path.localeCompare(b.path));
+      for (const sib of siblings) {
+        if (picks.length >= MAX_NEIGHBORS) break;
+        picks.push({ path: sib.path, relation: 'samePackage' });
+      }
+    }
+
     const out: NeighborFile[] = [];
     const byPath = new Map(ctx.index.files.map((f) => [f.path, f]));
     for (const p of picks) {
