@@ -1,9 +1,14 @@
 import * as vscode from 'vscode';
 import * as yaml from 'js-yaml';
+import type { KnowledgeStore } from '../knowledge/store';
 import { Finding, HistoryEvent, Priority, Severity, Status, validateFinding } from './schema';
 
 function severityToPriority(s: Severity): Priority {
   return s;
+}
+
+function isInternalPath(filePath: string): boolean {
+  return filePath === '.codeup' || filePath.startsWith('.codeup/');
 }
 
 export class FindingsStore {
@@ -14,7 +19,13 @@ export class FindingsStore {
   private watcher: vscode.FileSystemWatcher | undefined;
   private disposed = false;
 
+  private knowledge: KnowledgeStore | undefined;
+
   constructor(private readonly output: vscode.OutputChannel) {}
+
+  attachKnowledge(knowledge: KnowledgeStore): void {
+    this.knowledge = knowledge;
+  }
 
   dispose(): void {
     this.disposed = true;
@@ -70,6 +81,13 @@ export class FindingsStore {
             );
             continue;
           }
+          // Belt-and-braces: never surface findings pointing at Codeup's own
+          // state. These can survive from earlier scans before .codeup was
+          // excluded from the workspace walker.
+          if (isInternalPath(result.value.location.file)) {
+            this.output.appendLine(`[findings] ${name}: skipped — points at internal path ${result.value.location.file}`);
+            continue;
+          }
           next.set(result.value.id, result.value);
         } catch (err) {
           this.output.appendLine(`[findings] ${name}: ${(err as Error).message}`);
@@ -97,6 +115,7 @@ export class FindingsStore {
   async updateStatus(id: string, status: Status, note?: string): Promise<void> {
     const f = this.findings.get(id);
     if (!f) return;
+    if (f.status === status) return; // no-op — don't record dismissed→dismissed
     const event: HistoryEvent = {
       timestamp: new Date().toISOString(),
       event: 'status_changed',
@@ -105,6 +124,30 @@ export class FindingsStore {
       note,
     };
     await this.save({ ...f, status, history: [...f.history, event] });
+
+    if (this.knowledge) {
+      try {
+        if (status === 'dismissed' && note) {
+          await this.knowledge.recordDismissal({
+            category: f.category,
+            filePathPattern: f.location.file,
+            rationale: note,
+            dismissedBy: 'developer',
+            originalFindingId: f.id,
+          });
+        } else if (status === 'confirmed') {
+          await this.knowledge.recordExemplar({
+            category: f.category,
+            filePath: f.location.file,
+            excerpt: f.explanation,
+            confirmedBy: 'developer',
+            originalFindingId: f.id,
+          });
+        }
+      } catch (err) {
+        this.output.appendLine(`[findings] knowledge capture failed: ${(err as Error).message}`);
+      }
+    }
   }
 
   async upsertFromAnalysis(partial: Omit<Finding, 'history' | 'status' | 'priority' | 'schemaVersion'> & {

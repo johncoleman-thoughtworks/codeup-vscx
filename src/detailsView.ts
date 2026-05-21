@@ -50,6 +50,9 @@ export class DetailsView {
       case 'fixed':
         await this.store.updateStatus(this.currentId, 'fixed');
         break;
+      case 'reopen':
+        await this.store.updateStatus(this.currentId, 'unconfirmed', 'reopened');
+        break;
       case 'setStatus':
         if (msg.status) await this.store.updateStatus(this.currentId, msg.status, msg.note);
         break;
@@ -83,13 +86,47 @@ export class DetailsView {
           `<tr><td>${esc(h.timestamp)}</td><td>${esc(h.event)}</td><td>${esc([h.from, h.to].filter(Boolean).join(' → '))}</td><td>${esc(h.note ?? '')}</td></tr>`,
       )
       .join('');
-    return `<!doctype html><html><head><meta charset="utf-8"/>
+    return renderHtml(f, esc, md, historyRows);
+  }
+}
+
+function actionButtons(status: Status): string {
+  switch (status) {
+    case 'unconfirmed':
+      return `
+        <button onclick="send('confirm')">Confirm</button>
+        <button onclick="send('dismiss')">Dismiss…</button>
+        <button onclick="send('fixed')">Mark Fixed</button>`;
+    case 'confirmed':
+      return `
+        <button onclick="send('dismiss')">Dismiss…</button>
+        <button onclick="send('fixed')">Mark Fixed</button>
+        <button onclick="send('reopen')">Reopen</button>`;
+    case 'dismissed':
+      return `
+        <span class="resolved">✓ Dismissed — see history below for rationale.</span>
+        <button onclick="send('reopen')">Reopen</button>`;
+    case 'fixed':
+      return `
+        <span class="resolved">✓ Marked fixed.</span>
+        <button onclick="send('reopen')">Reopen</button>`;
+  }
+}
+
+function renderHtml(
+  f: Finding,
+  esc: (s: string) => string,
+  md: (s: string) => string,
+  historyRows: string,
+): string {
+  return `<!doctype html><html><head><meta charset="utf-8"/>
 <style>
   body { font-family: var(--vscode-font-family); padding: 1rem; color: var(--vscode-foreground); }
   h1 { font-size: 1.2rem; margin: 0 0 0.5rem 0; }
   .meta { color: var(--vscode-descriptionForeground); font-size: 0.85rem; margin-bottom: 1rem; }
   .badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; margin-right: 4px; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); }
-  .actions { margin: 1rem 0; }
+  .actions { margin: 1rem 0; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+  .resolved { color: var(--vscode-descriptionForeground); font-style: italic; margin-right: 0.5rem; }
   button { margin-right: 0.5rem; padding: 4px 10px; background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; border-radius: 2px; cursor: pointer; }
   button:hover { background: var(--vscode-button-hoverBackground); }
   h2 { font-size: 1rem; margin-top: 1.5rem; }
@@ -105,9 +142,7 @@ export class DetailsView {
   </div>
   <div class="actions">
     <button onclick="send('open')">Open Code</button>
-    <button onclick="send('confirm')">Confirm</button>
-    <button onclick="send('dismiss')">Dismiss…</button>
-    <button onclick="send('fixed')">Mark Fixed</button>
+    ${actionButtons(f.status)}
   </div>
   <h2>Explanation</h2>
   <p>${md(f.explanation)}</p>
@@ -119,5 +154,4 @@ export class DetailsView {
     function send(type) { vscode.postMessage({ type }); }
   </script>
 </body></html>`;
-  }
 }

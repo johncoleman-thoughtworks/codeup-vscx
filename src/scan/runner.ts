@@ -9,6 +9,7 @@ import { saveGraph, saveIndex } from '../scanner/persist';
 import { buildGraph, DependencyGraph, findCycles, neighborsOf } from '../scanner/graph';
 import { cycleFindings, layerViolations } from '../intent/check';
 import { loadIntent } from '../intent/loader';
+import { KnowledgeStore } from '../knowledge/store';
 import { StatusBar } from '../statusBar';
 
 const INPUT_COST_PER_MTOK = 3.0;
@@ -25,6 +26,7 @@ export class ScanRunner {
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly store: FindingsStore,
+    private readonly knowledge: KnowledgeStore,
     private readonly client: AnthropicClient,
     private readonly statusBar: StatusBar,
     private readonly output: vscode.OutputChannel,
@@ -36,7 +38,7 @@ export class ScanRunner {
       vscode.window.showWarningMessage('Codeup: open a folder first.');
       return;
     }
-    const catalogue = loadCatalogue(this.context.extensionPath);
+    const catalogue = loadCatalogue(this.context.extensionPath, this.knowledge.patterns);
     const cache = new AnalysisCache(root);
     await cache.load();
 
@@ -104,7 +106,7 @@ export class ScanRunner {
               const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(root, entry.path));
               const neighbors = await this.gatherNeighbors(root, entry, graph, index);
               const result = await analyzeFile(
-                root, entry, bytes, catalogue, this.client, this.store, cache, this.output, neighbors,
+                root, entry, bytes, catalogue, this.client, this.store, cache, this.output, neighbors, this.knowledge,
               );
               this.output.appendLine(
                 `[scan] ${entry.path}: ${result.findings.length} finding(s)${result.fromCache ? ' (cached)' : ''}${result.skipped ? ` (skipped: ${result.skipped})` : ''}${neighbors.length > 0 ? ` [+${neighbors.length} neighbors]` : ''}`,

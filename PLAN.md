@@ -57,15 +57,17 @@ Goal: catch shotgun surgery, divergent change, leaky abstraction, cyclic depende
 
 **Verify:** introduce a cycle into a sample project → flagged without an API call; rename a file with a confirmed finding → finding rebinds, history records the move.
 
-## Milestone 4 — Knowledge base + RAG feedback (2–3 weeks)
+## Milestone 4 — Knowledge base + feedback loop (done)
 
 Goal: tool improves over time on each codebase.
 
-- [ ] `.codeup/knowledge/` layout: catalogue extensions, dismissal rationales, confirmed exemplars, architectural intent.
-- [ ] Dismiss action prompts for rationale; saved as a knowledge entry tied to category + file glob.
-- [ ] Retrieval: in-memory category + text-similarity match for projects up to a few thousand entries; pluggable interface for sqlite-vec / LanceDB later.
-- [ ] Analyzer prompts include retrieved knowledge entries as context.
-- [ ] "Why was this not flagged again?" link from finding history to the rationale that suppressed it.
+- [x] `.codeup/knowledge/` layout: `dismissals.yaml`, `exemplars.yaml`, `patterns.yaml` (team-specific catalogue extensions).
+- [x] Dismiss-with-rationale persists a `DismissalEntry`; confirm persists an `ExemplarEntry`.
+- [x] In-memory retrieval by minimatch glob (dismissals) and directory proximity (exemplars); top-K per category.
+- [x] Analyzer prompts include retrieved knowledge entries as a "Project conventions" block.
+- [x] Custom catalogue patterns merge over defaults; cache key includes knowledge hash so changes invalidate stale results.
+- [ ] Vector similarity / dense retrieval — deferred until in-memory retrieval feels insufficient.
+- [ ] "Why was this not flagged again?" UI link — the finding history table already shows the dismissal event; deferred upgrade.
 
 **Verify:** dismiss a finding with rationale → next scan does not re-flag it; confirm a finding → next scan flags structurally-similar code with higher confidence.
 

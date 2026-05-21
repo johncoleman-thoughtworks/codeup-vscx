@@ -77,9 +77,8 @@ const DEFAULT_EXCLUDES = [
   '*.nupkg',
   '*.suo',
   '*.user',
-  // Codeup itself
-  '.codeup/index',
-  '.codeup/cache',
+  // Codeup itself — never analyze its own state
+  '.codeup',
 ];
 
 const MAX_FILE_BYTES = 512 * 1024; // skip files larger than 512 KB for now

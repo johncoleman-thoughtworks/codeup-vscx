@@ -61,7 +61,7 @@ export class FindingsProvider implements vscode.TreeDataProvider<Node> {
   }
 
   getChildren(node?: Node): Node[] {
-    const findings = this.store.all.filter((f) => f.status !== 'fixed');
+    const findings = this.store.all.filter((f) => f.status !== 'fixed' && f.status !== 'dismissed');
     if (!node) {
       return this.groupFindings(findings);
     }

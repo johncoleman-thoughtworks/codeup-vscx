@@ -4,6 +4,7 @@ import { DecorationManager } from './decorations';
 import { DetailsView } from './detailsView';
 import { FindingsStore } from './findings/store';
 import { FindingsProvider } from './findingsProvider';
+import { KnowledgeStore } from './knowledge/store';
 import { ScanRunner } from './scan/runner';
 import { StatusBar } from './statusBar';
 import { clearApiKey, getApiKey } from './util/apiKey';
@@ -11,7 +12,9 @@ import { clearApiKey, getApiKey } from './util/apiKey';
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel('Codeup');
   const store = new FindingsStore(output);
-  await store.init();
+  const knowledge = new KnowledgeStore(output);
+  store.attachKnowledge(knowledge);
+  await Promise.all([store.init(), knowledge.init()]);
 
   const findingsProvider = new FindingsProvider(store);
   const treeView = vscode.window.createTreeView('codeup.findings', { treeDataProvider: findingsProvider });
@@ -19,11 +22,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const decorations = new DecorationManager(store);
   const statusBar = new StatusBar(store);
   const client = new AnthropicClient(context);
-  const runner = new ScanRunner(context, store, client, statusBar, output);
+  const runner = new ScanRunner(context, store, knowledge, client, statusBar, output);
 
   context.subscriptions.push(
     output,
     store,
+    knowledge,
     treeView,
     decorations,
     statusBar,
