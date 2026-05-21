@@ -11,6 +11,7 @@ import { cycleFindings, layerViolations } from '../intent/check';
 import { loadIntent } from '../intent/loader';
 import { KnowledgeStore } from '../knowledge/store';
 import { StatusBar } from '../statusBar';
+import { yieldToEventLoop } from '../util/abort';
 
 const INPUT_COST_PER_MTOK = 3.0;
 const OUTPUT_COST_PER_MTOK = 15.0;
@@ -106,15 +107,23 @@ export class ScanRunner {
               const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(root, entry.path));
               const neighbors = await this.gatherNeighbors(root, entry, graph, index);
               const result = await analyzeFile(
-                root, entry, bytes, catalogue, this.client, this.store, cache, this.output, neighbors, this.knowledge,
+                root, entry, bytes, catalogue, this.client, this.store, cache, this.output, neighbors, this.knowledge, token,
               );
               this.output.appendLine(
                 `[scan] ${entry.path}: ${result.findings.length} finding(s)${result.fromCache ? ' (cached)' : ''}${result.skipped ? ` (skipped: ${result.skipped})` : ''}${neighbors.length > 0 ? ` [+${neighbors.length} neighbors]` : ''}`,
               );
             } catch (err) {
+              const name = (err as Error).name;
+              if (name === 'AbortError' || token.isCancellationRequested) {
+                this.output.appendLine(`[scan] ${entry.path}: cancelled`);
+                break;
+              }
               this.output.appendLine(`[scan] ${entry.path}: ERROR ${(err as Error).message}`);
             }
             done++;
+            // Cooperative yield so the extension host drains queued events
+            // (tree refreshes, hovers, status-bar repaints) between files.
+            await yieldToEventLoop();
           }
         },
       );

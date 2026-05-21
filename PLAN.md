@@ -82,11 +82,11 @@ Goal: tool improves over time on each codebase.
 
 ## Cross-cutting concerns
 
-- **API key storage** — `vscode.SecretStorage` only; never settings.json. First-run prompt to set it.
-- **Background work** — analyzer in a worker thread; never block the extension host.
-- **Schema migrations** — `schemaVersion` field on every YAML file; migration runner on extension activation.
-- **Testing** — `@vscode/test-electron` for activation + tree-view smoke tests; analyzer tested against recorded API fixtures (no live calls in CI).
-- **Linting** — eslint + prettier; add in M1.
+- **API key storage** — done. `vscode.SecretStorage` only; never settings.json. First-run prompt set.
+- **Background work** — done at current scale. Anthropic SDK calls receive an `AbortSignal` derived from the progress notification's `CancellationToken`, so Cancel actually interrupts in-flight requests. The per-file loop yields to the event loop between iterations so the extension host drains queued tree/hover/status updates. True worker-thread offloading deferred until profiling on a 10k+ file repo shows the need.
+- **Schema migrations** — done. `src/migrations/runner.ts` provides a generic `runMigrations` that chains v1 → v2 → … → current. Registries declared per artifact (`FINDING_MIGRATIONS`, `DISMISSAL_MIGRATIONS`, etc.); currently empty because every schema is still at v1. `FindingsStore` and `KnowledgeStore` both pass loaded YAML through the runner before validation.
+- **Testing** — partial. `@vscode/test-electron` activation suite scaffolded but not live-run yet. 53 unit tests passing (`npm test`). No recorded API fixtures.
+- **Linting** — not done. `eslint` referenced in `package.json` scripts but no config file yet.
 
 ## Open questions
 

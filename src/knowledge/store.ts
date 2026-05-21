@@ -3,6 +3,16 @@ import * as vscode from 'vscode';
 import * as yaml from 'js-yaml';
 import type { CataloguePattern } from '../catalogue/loader';
 import {
+  CUSTOM_PATTERNS_CURRENT_VERSION,
+  CUSTOM_PATTERNS_MIGRATIONS,
+  DISMISSAL_CURRENT_VERSION,
+  DISMISSAL_MIGRATIONS,
+  EXEMPLAR_CURRENT_VERSION,
+  EXEMPLAR_MIGRATIONS,
+  Migration,
+  runMigrations,
+} from '../migrations/runner';
+import {
   CustomPatternsFile,
   DismissalEntry,
   DismissalsFile,
@@ -101,17 +111,23 @@ export class KnowledgeStore {
   private async reload(): Promise<void> {
     const root = this.rootUri();
     if (!root) return;
-    this.dismissals = (await this.readYaml<DismissalsFile>(root, REL.dismissals))?.entries ?? [];
-    this.exemplars = (await this.readYaml<ExemplarsFile>(root, REL.exemplars))?.entries ?? [];
-    this.customPatterns = (await this.readYaml<CustomPatternsFile>(root, REL.patterns))?.patterns ?? [];
+    this.dismissals = (await this.readYaml<DismissalsFile>(root, REL.dismissals, DISMISSAL_CURRENT_VERSION, DISMISSAL_MIGRATIONS))?.entries ?? [];
+    this.exemplars = (await this.readYaml<ExemplarsFile>(root, REL.exemplars, EXEMPLAR_CURRENT_VERSION, EXEMPLAR_MIGRATIONS))?.entries ?? [];
+    this.customPatterns = (await this.readYaml<CustomPatternsFile>(root, REL.patterns, CUSTOM_PATTERNS_CURRENT_VERSION, CUSTOM_PATTERNS_MIGRATIONS))?.patterns ?? [];
     if (this.disposed) return;
     this._onDidChange.fire();
   }
 
-  private async readYaml<T>(root: vscode.Uri, rel: string): Promise<T | undefined> {
+  private async readYaml<T>(root: vscode.Uri, rel: string, currentVersion: number, migrations: Migration[]): Promise<T | undefined> {
     try {
       const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(root, rel));
-      return yaml.load(Buffer.from(bytes).toString('utf8')) as T;
+      const raw = yaml.load(Buffer.from(bytes).toString('utf8'));
+      if (!raw) return undefined;
+      const mig = runMigrations<T>(raw, rel, currentVersion, migrations);
+      if (mig.migrated) {
+        this.output.appendLine(`[knowledge] ${rel}: migrated through v${mig.appliedSteps.join(', v')}`);
+      }
+      return mig.value;
     } catch (err) {
       const e = err as { code?: string; message?: string };
       if (e?.code !== 'FileNotFound') {

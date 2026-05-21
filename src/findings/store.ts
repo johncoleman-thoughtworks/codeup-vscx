@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as yaml from 'js-yaml';
 import type { KnowledgeStore } from '../knowledge/store';
+import { FINDING_CURRENT_VERSION, FINDING_MIGRATIONS, runMigrations } from '../migrations/runner';
 import { Finding, HistoryEvent, Priority, Severity, Status, validateFinding } from './schema';
 
 function severityToPriority(s: Severity): Priority {
@@ -74,7 +75,18 @@ export class FindingsStore {
         try {
           const bytes = await vscode.workspace.fs.readFile(uri);
           const parsed = yaml.load(Buffer.from(bytes).toString('utf8'));
-          const result = validateFinding(parsed);
+          let migrated: unknown;
+          try {
+            const mig = runMigrations(parsed, name, FINDING_CURRENT_VERSION, FINDING_MIGRATIONS);
+            migrated = mig.value;
+            if (mig.migrated) {
+              this.output.appendLine(`[findings] ${name}: migrated through v${mig.appliedSteps.join(', v')}`);
+            }
+          } catch (err) {
+            this.output.appendLine(`[findings] ${name}: ${(err as Error).message}`);
+            continue;
+          }
+          const result = validateFinding(migrated);
           if (!result.ok) {
             this.output.appendLine(
               `[findings] ${name}: ${result.errors.map((e) => `${e.path}: ${e.message}`).join('; ')}`,
