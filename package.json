@@ -21,7 +21,7 @@
         {
           "id": "codeup",
           "title": "Codeup",
-          "icon": "$(search-view-icon)"
+          "icon": "resources/codeup-icon.svg"
         }
       ]
     },
