@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { FileEntry, ProjectIndex } from './index';
+import type { FileEntry, ProjectIndex } from './index';
 
 export interface DependencyGraph {
   // adjacency: from → set of to (workspace-relative paths)

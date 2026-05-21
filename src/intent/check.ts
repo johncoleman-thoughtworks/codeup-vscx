@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import { Finding } from '../findings/schema';
 import { DependencyGraph, Cycle } from '../scanner/graph';
-import { IntentConfig, layerForFile } from './loader';
+import { IntentConfig, layerForFile } from './layers';
 
 const DETECTOR = 'codeup-deterministic';
 

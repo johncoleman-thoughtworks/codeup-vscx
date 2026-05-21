@@ -1,0 +1,15 @@
+schemaVersion: 1
+id: fixture-1
+category: anemic-domain-model
+severity: high
+status: unconfirmed
+priority: high
+location:
+  file: src/example.ts
+  line: 1
+explanation: Fixture finding used by the integration test suite.
+detectedAt: 2026-05-21T00:00:00Z
+detectedBy: integration-test
+history:
+  - timestamp: 2026-05-21T00:00:00Z
+    event: detected

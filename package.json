@@ -111,12 +111,21 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "pretest": "npm run compile",
+    "test": "npm run test:unit",
+    "test:unit": "node --test 'dist/test/unit/*.test.js'",
+    "test:integration": "node ./dist/test/integration/runTest.js",
+    "test:all": "npm run test:unit && npm run test:integration"
   },
   "devDependencies": {
+    "@types/glob": "^8.1.0",
     "@types/js-yaml": "^4.0.9",
+    "@types/mocha": "^10.0.6",
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "^2.4.0",
+    "glob": "^10.3.10",
+    "mocha": "^10.4.0",
     "typescript": "^5.4.0"
   },
   "dependencies": {

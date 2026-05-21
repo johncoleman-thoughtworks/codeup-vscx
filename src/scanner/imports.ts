@@ -31,18 +31,28 @@ export function extractImports(language: string, text: string): ExtractedImports
 // import com.example.Foo;       → "com.example.Foo"
 // import com.example.*;         → "com.example.*"
 // import static com.x.Y.method; → "com.x.Y" (drop tail member)
-const JVM_RE = /^\s*import\s+(?:static\s+)?([a-zA-Z_][\w.]*\*?)\s*;?\s*$/gm;
+const JVM_RE = /^\s*import\s+(static\s+)?([a-zA-Z_][\w.]*\*?)\s*;?\s*$/gm;
 function jvmImports(text: string): ExtractedImports {
   const raw: string[] = [];
-  for (const m of text.matchAll(JVM_RE)) raw.push(m[1]);
+  for (const m of text.matchAll(JVM_RE)) {
+    const isStatic = !!m[1];
+    let imp = m[2];
+    if (isStatic && !imp.endsWith('.*')) {
+      const lastDot = imp.lastIndexOf('.');
+      if (lastDot > 0) imp = imp.slice(0, lastDot);
+    }
+    raw.push(imp);
+  }
   return { raw };
 }
 
 // import ... from 'x'   |   import 'x'   |   require('x')   |   import('x')
 const JS_RE = /(?:from|require\(|import\()\s*['"]([^'"]+)['"]\)?/g;
+const JS_BARE_IMPORT_RE = /^\s*import\s+['"]([^'"]+)['"]\s*;?\s*$/gm;
 function jsImports(text: string): ExtractedImports {
   const raw: string[] = [];
   for (const m of text.matchAll(JS_RE)) raw.push(m[1]);
+  for (const m of text.matchAll(JS_BARE_IMPORT_RE)) raw.push(m[1]);
   return { raw };
 }
 

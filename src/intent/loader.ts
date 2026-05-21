@@ -1,15 +1,8 @@
 import * as vscode from 'vscode';
 import * as yaml from 'js-yaml';
+import { IntentConfig, LayerRule } from './layers';
 
-export interface LayerRule {
-  layer: string;          // human-readable layer name (e.g. "domain")
-  match: string;          // path prefix or simple glob ("src/main/java/com/x/domain/")
-  cannotDependOn: string[]; // layer names this layer must not import from
-}
-
-export interface IntentConfig {
-  layers: LayerRule[];
-}
+export { IntentConfig, LayerRule, layerForFile } from './layers';
 
 const INTENT_REL = '.codeup/intent.yaml';
 
@@ -24,15 +17,4 @@ export async function loadIntent(root: vscode.Uri): Promise<IntentConfig | undef
   } catch {
     return undefined;
   }
-}
-
-export function layerForFile(file: string, intent: IntentConfig): string | undefined {
-  // Pick the most specific matching layer (longest prefix wins).
-  let best: LayerRule | undefined;
-  for (const rule of intent.layers) {
-    if (file.startsWith(rule.match) && (best === undefined || rule.match.length > best.match.length)) {
-      best = rule;
-    }
-  }
-  return best?.layer;
 }
