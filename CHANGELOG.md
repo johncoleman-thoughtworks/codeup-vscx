@@ -2,6 +2,37 @@
 
 All notable changes to Codeup are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); Codeup uses [Semantic Versioning](https://semver.org/).
 
+## 1.0.3 — 2026-05-21
+
+### Added
+
+Three new catalogue entries drawn from Robert C. Martin's *Clean Code*
+(Ch. 17) and Sonar's cognitive-complexity concept:
+
+- `base-class-depends-on-subclass` — flags parent classes that
+  reference their concrete subclasses (`instanceof`, downcasts,
+  direct construction, calls to subclass-specific methods via cast).
+  Distinct from `cyclic-dependency` (which is about module imports);
+  this is the OO-shape version. Carries an explicit excuse for
+  sealed/exhaustive-match hierarchies and the Visitor pattern.
+- `function-name-mismatch` — function does meaningfully more or less
+  than the name promises (`get*` that also creates, `validate*` that
+  also mutates, `save*` that also publishes events). Reasoning step
+  forces Claude to read the name aloud and list what the body does
+  before reporting.
+- `cognitive-complexity` — captures the combinatorial case where
+  multiple control-flow shapes, nested decisions, and boolean
+  operators stitched into conditions multiply each other into a
+  function that is hard to follow even when not very long. Distinct
+  from `long-method` (size) and `deep-nesting` (depth).
+
+Catalogue now at 95 patterns.
+
+### Docs
+
+- README "What it detects" updated with the new entries and a new
+  "Inheritance & OO shape" category.
+
 ## 1.0.2 — 2026-05-21
 
 ### Added

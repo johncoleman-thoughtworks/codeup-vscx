@@ -81,6 +81,45 @@ patterns:
       Conditional / loop nesting more than ~3 levels deep. Usually fixable with
       early returns, guard clauses, or extracted helpers.
 
+  - id: cognitive-complexity
+    name: High Cognitive Complexity
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, scala, python, ruby, go, rust]
+    defaultSeverity: medium
+    hint: |
+      The function is hard to read not because it is long, but because the
+      reader has to hold too much branching, nesting, and side-flow in their
+      head at once to follow it. Models Sonar's cognitive-complexity idea
+      (different from cyclomatic complexity) — a confused weave of decisions
+      and effects, not just sheer size.
+
+      Signals that combine to indicate high cognitive complexity:
+        - Multiple control-flow shapes in the same body — if/else AND a
+          loop AND a try/catch AND an early return, all in one method.
+        - Nested control flow where each nesting level carries non-trivial
+          logic (not just a guard at the top).
+        - Boolean operators stitched into conditions: `if (a && b || (c &&
+          !d))` instead of named predicates.
+        - Mixed concerns inside one method — input validation, business
+          logic, persistence call, and result mapping interleaved rather
+          than separated.
+        - Early returns inside nested loops; `break`/`continue` controlling
+          flow several levels up.
+
+      Distinguish from siblings: a *long* but flat method is `long-method`
+      not this. A method with one *deeply nested* but otherwise simple
+      condition is `deep-nesting`. This pattern is the combinatorial case
+      where multiple of those forces multiply each other.
+
+      Reasoning step: after reading the function once, could you summarise
+      what it does in one sentence without re-reading? If you needed two or
+      more passes to follow control flow, the method probably has high
+      cognitive complexity.
+
+      Refactor direction: extract named predicates for compound booleans
+      (`if (orderIsReadyToShip(o))`), pull each branch's body into its own
+      function so each call site reads as one verb, and replace nested
+      conditionals with a polymorphic dispatch where the shape repeats.
+
   - id: leaky-abstraction
     name: Leaky Abstraction
     languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, scala]
@@ -468,6 +507,82 @@ patterns:
       catalogue cannot judge (e.g. proprietary entity types in finance,
       healthcare); rely on confirmed exemplars in the knowledge base
       for those.
+
+  - id: base-class-depends-on-subclass
+    name: Base Class Depends on Subclass
+    languages: [java, kotlin, scala, csharp, typescript, typescriptreact, javascript, python, ruby]
+    defaultSeverity: high
+    hint: |
+      A parent (base) class references one of its concrete subclasses
+      by name — via `instanceof` / `is` checks, downcasts, direct
+      construction of the subclass, or calls to subclass-specific
+      methods through a downcast. The abstraction is upside down: the
+      thing meant to be more general knows about the thing meant to
+      specialise it.
+
+      Forms to look for:
+        - `if (obj instanceof SpecificSubclass)` inside a method on
+          the base class.
+        - The base class constructs or returns instances of a
+          specific subclass (`return new SpecificSubclass()`).
+        - The base class imports a sibling subclass type.
+        - Downcasting `this` or a generic field to a specific
+          subclass to call a method.
+
+      Why it's bad: adding a new subclass should not require editing
+      the parent. With this pattern, the parent must know every
+      subclass that exists, which defeats the point of inheritance.
+
+      Refactor direction: replace the type check with polymorphism —
+      define an abstract method on the base class that each subclass
+      overrides; the base calls the abstract method instead of
+      branching on type. Or use the Strategy / Visitor pattern if
+      the operations vary independently of the data.
+
+      DO NOT report when the base is a factory or registry whose
+      explicit job is to know about its subclasses (e.g. a sealed
+      class hierarchy where exhaustive matching is the point — Kotlin
+      `sealed` / Scala `sealed`/Rust enum-like). Be alert that the
+      Visitor pattern's `accept(Visitor)` method on the base intentionally
+      involves the visitor knowing every subclass — that's the pattern,
+      not the smell.
+
+  - id: function-name-mismatch
+    name: Function Name Does Not Match Behaviour
+    languages: [java, kotlin, scala, csharp, typescript, typescriptreact, javascript, python, ruby, go, rust]
+    defaultSeverity: medium
+    hint: |
+      The function's name promises one thing; the body does more, less,
+      or something different. Reading the call site, you cannot predict
+      what actually happens without opening the function. A reliable
+      source of bugs because callers act on the name.
+
+      Common forms:
+        - A `get*` / `find*` / `load*` function that ALSO creates the
+          resource if missing (`getOrCreate` semantics hidden behind
+          `get`). Caller doesn't know about the write side effect.
+        - A `validate*` / `is*` / `check*` function that ALSO mutates
+          (normalises, trims, lowercases the input).
+        - A `save*` / `store*` that ALSO triggers external effects
+          (sends notifications, fires events) — the name promises
+          persistence only.
+        - A function whose body is meaningfully wider than its name
+          (`updateAddress` that also reprices, recalculates tax, and
+          notifies billing).
+        - A function whose name suggests purity but it touches I/O
+          (close cousin of hidden-side-effects, but framed around the
+          name/behaviour gap rather than purity).
+
+      Reasoning step before reporting: read the name aloud, then list
+      what the body actually does. If a competent caller would be
+      surprised by anything on that list, REPORT and quote the
+      surprising part. If everything the body does is reasonably
+      implied by the name, skip.
+
+      Refactor direction: rename to match the actual behaviour
+      (`getOrCreateAccount`, `validateAndNormaliseEmail`,
+      `saveAndPublish`), or split the function so each name describes
+      one effect.
 
   - id: parallel-inheritance-hierarchies
     name: Parallel Inheritance Hierarchies

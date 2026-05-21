@@ -6,9 +6,10 @@ Findings are persisted as files under `.codeup/` so they travel with the repo an
 
 ## What it detects
 
-90 catalogued patterns spanning:
+95 catalogued patterns spanning:
 
-- **Single-file smells** — god class, anemic domain model, long methods, primitive obsession, deep nesting, error swallowing, etc.
+- **Single-file smells** — god class, anemic domain model, long methods, primitive obsession, deep nesting, high cognitive complexity, error swallowing, function-name mismatches, etc.
+- **Inheritance & OO shape** — non-exclusive subtypes (roles modelled as inheritance), procedural shell classes (Manager / Handler / Processor), base classes that depend on their subclasses, parallel inheritance hierarchies.
 - **Cross-file structure** — type leakage across boundaries, shotgun surgery, feature envy with neighbor context.
 - **Module dependency** — deterministic cyclic-dependency detection (Tarjan SCC), layer-boundary violations driven by an optional `.codeup/intent.yaml`.
 - **Service-level** — distributed monolith indicators, shared-database, reach-through reads, god service.
