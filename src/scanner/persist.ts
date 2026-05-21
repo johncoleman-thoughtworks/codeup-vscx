@@ -1,13 +1,17 @@
 import * as vscode from 'vscode';
+import { ensureSelfIgnored } from '../util/selfIgnore';
 import { ProjectIndex } from './index';
 import { DependencyGraph } from './graph';
 
+const INDEX_DIR = '.codeup/index';
 const INDEX_REL = '.codeup/index/index.json';
 const GRAPH_REL = '.codeup/index/graph.json';
 
 export async function saveGraph(root: vscode.Uri, graph: DependencyGraph): Promise<void> {
+  const dir = vscode.Uri.joinPath(root, INDEX_DIR);
+  await vscode.workspace.fs.createDirectory(dir);
+  await ensureSelfIgnored(dir);
   const uri = vscode.Uri.joinPath(root, GRAPH_REL);
-  await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(root, '.codeup/index'));
   const serializable = {
     edges: Object.fromEntries([...graph.edges].map(([k, v]) => [k, [...v]])),
     unresolvedCount: graph.unresolved.size,
@@ -25,7 +29,8 @@ export async function loadIndex(root: vscode.Uri): Promise<ProjectIndex | undefi
 }
 
 export async function saveIndex(root: vscode.Uri, index: ProjectIndex): Promise<void> {
-  const uri = vscode.Uri.joinPath(root, INDEX_REL);
-  await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(root, '.codeup/index'));
-  await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(index, null, 2), 'utf8'));
+  const dir = vscode.Uri.joinPath(root, INDEX_DIR);
+  await vscode.workspace.fs.createDirectory(dir);
+  await ensureSelfIgnored(dir);
+  await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(root, INDEX_REL), Buffer.from(JSON.stringify(index, null, 2), 'utf8'));
 }

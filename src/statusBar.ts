@@ -1,15 +1,15 @@
 import * as vscode from 'vscode';
-import { FindingsStore } from './findings/store';
+import { WorkspaceStores } from './workspaceStores';
 
 export class StatusBar {
   private readonly item: vscode.StatusBarItem;
   private readonly disposables: vscode.Disposable[] = [];
   private scanState = 'idle';
 
-  constructor(private readonly store: FindingsStore) {
+  constructor(private readonly stores: WorkspaceStores) {
     this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
     this.item.command = 'codeup.findings.focus';
-    this.disposables.push(this.item, store.onDidChange(() => this.render()));
+    this.disposables.push(this.item, stores.onDidChange(() => this.render()));
     this.render();
     this.item.show();
   }
@@ -24,7 +24,9 @@ export class StatusBar {
   }
 
   private render(): void {
-    const open = this.store.all.filter((f) => f.status !== 'fixed' && f.status !== 'dismissed');
+    const open = this.stores.allFindingsWithRoot
+      .map(({ finding }) => finding)
+      .filter((f) => f.status !== 'fixed' && f.status !== 'dismissed');
     const high = open.filter((f) => f.severity === 'high').length;
     const icon = this.scanState === 'scanning' ? '$(sync~spin)' : '$(search)';
     this.item.text = `${icon} Codeup: ${open.length}${high > 0 ? ` ($(error) ${high})` : ''}`;

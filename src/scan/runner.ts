@@ -12,6 +12,7 @@ import { loadIntent } from '../intent/loader';
 import { KnowledgeStore } from '../knowledge/store';
 import { StatusBar } from '../statusBar';
 import { yieldToEventLoop } from '../util/abort';
+import { WorkspaceStores } from '../workspaceStores';
 
 const INPUT_COST_PER_MTOK = 3.0;
 const OUTPUT_COST_PER_MTOK = 15.0;
@@ -23,65 +24,54 @@ export interface ScanOptions {
   skipCostPrompt?: boolean;
 }
 
+interface RootContext {
+  root: vscode.Uri;
+  store: FindingsStore;
+  knowledge: KnowledgeStore;
+  catalogue: Catalogue;
+  cache: AnalysisCache;
+  index: Awaited<ReturnType<typeof scanWorkspace>>;
+  graph: DependencyGraph;
+}
+
 export class ScanRunner {
   constructor(
     private readonly context: vscode.ExtensionContext,
-    private readonly store: FindingsStore,
-    private readonly knowledge: KnowledgeStore,
+    private readonly stores: WorkspaceStores,
     private readonly client: AnthropicClient,
     private readonly statusBar: StatusBar,
     private readonly output: vscode.OutputChannel,
   ) {}
 
   async run(opts: ScanOptions): Promise<void> {
-    const root = vscode.workspace.workspaceFolders?.[0]?.uri;
-    if (!root) {
+    const targetRoots = this.resolveScopedRoots(opts);
+    if (targetRoots.length === 0) {
       vscode.window.showWarningMessage('Codeup: open a folder first.');
       return;
     }
-    const catalogue = loadCatalogue(this.context.extensionPath, this.knowledge.patterns);
-    const cache = new AnalysisCache(root);
-    await cache.load();
 
-    // 1) Scan workspace + persist index + build graph.
+    // Phase 1: index each root + run deterministic checks. No API cost.
     this.statusBar.setScanState('scanning');
-    let index: Awaited<ReturnType<typeof scanWorkspace>>;
-    let graph: DependencyGraph;
+    const contexts: RootContext[] = [];
     try {
-      index = await scanWorkspace(root);
-      await saveIndex(root, index);
-      graph = buildGraph(index);
-      await saveGraph(root, graph);
+      for (const root of targetRoots) {
+        const ctx = await this.prepareRoot(root);
+        if (ctx) contexts.push(ctx);
+      }
     } finally {
       this.statusBar.setScanState('idle');
     }
 
-    // 2) Rebind findings whose source file moved; orphan the rest.
-    const currentFiles = new Map(index.files.map((f) => [f.path, f.contentHash]));
-    const rebindStats = await this.store.rebindOrOrphan(currentFiles);
-    if (rebindStats.rebound + rebindStats.orphaned > 0) {
-      this.output.appendLine(`[scan] rebind: ${rebindStats.rebound} moved, ${rebindStats.orphaned} orphaned`);
-    }
-
-    // 3) Deterministic checks — no LLM, no cost.
-    const cycles = findCycles(graph);
-    for (const f of cycleFindings(cycles)) await this.store.upsertFromAnalysis(f);
-    const intent = await loadIntent(root);
-    if (intent) {
-      for (const f of layerViolations(graph, intent)) await this.store.upsertFromAnalysis(f);
-    }
-    if (cycles.length > 0 || intent) {
-      this.output.appendLine(`[scan] deterministic: ${cycles.length} cycle(s)${intent ? ', layer rules applied' : ''}`);
-    }
-
-    // 4) LLM pass — single-file with neighbor context.
-    const targets = this.targetsFor(opts, index, catalogue);
-    if (targets.length === 0) {
+    // Phase 2: LLM pass, across all contexts.
+    const allTargets = contexts.flatMap((ctx) =>
+      this.targetsFor(opts, ctx).map((entry) => ({ ctx, entry })),
+    );
+    if (allTargets.length === 0) {
       vscode.window.showInformationMessage('Codeup: no LLM-analyzable files in scope (deterministic checks still ran).');
       return;
     }
 
-    const { totalChars, uncached } = await this.preflight(targets, catalogue, cache, graph, index);
+    const { totalChars, uncached } = this.preflight(allTargets);
     if (!opts.skipCostPrompt && opts.scope === 'full' && uncached.length > 0) {
       const ok = await this.confirmCost(uncached.length, totalChars);
       if (!ok) return;
@@ -97,17 +87,17 @@ export class ScanRunner {
         },
         async (progress, token) => {
           let done = 0;
-          for (const entry of targets) {
+          for (const { ctx, entry } of allTargets) {
             if (token.isCancellationRequested) break;
             progress.report({
-              message: `${done + 1}/${targets.length} • ${entry.path}`,
-              increment: 100 / targets.length,
+              message: `${done + 1}/${allTargets.length} • ${entry.path}`,
+              increment: 100 / allTargets.length,
             });
             try {
-              const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(root, entry.path));
-              const neighbors = await this.gatherNeighbors(root, entry, graph, index);
+              const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(ctx.root, entry.path));
+              const neighbors = await this.gatherNeighbors(ctx, entry);
               const result = await analyzeFile(
-                root, entry, bytes, catalogue, this.client, this.store, cache, this.output, neighbors, this.knowledge, token,
+                ctx.root, entry, bytes, ctx.catalogue, this.client, ctx.store, ctx.cache, this.output, neighbors, ctx.knowledge, token,
               );
               this.output.appendLine(
                 `[scan] ${entry.path}: ${result.findings.length} finding(s)${result.fromCache ? ' (cached)' : ''}${result.skipped ? ` (skipped: ${result.skipped})` : ''}${neighbors.length > 0 ? ` [+${neighbors.length} neighbors]` : ''}`,
@@ -121,8 +111,6 @@ export class ScanRunner {
               this.output.appendLine(`[scan] ${entry.path}: ERROR ${(err as Error).message}`);
             }
             done++;
-            // Cooperative yield so the extension host drains queued events
-            // (tree refreshes, hovers, status-bar repaints) between files.
             await yieldToEventLoop();
           }
         },
@@ -132,22 +120,57 @@ export class ScanRunner {
     }
   }
 
-  private targetsFor(opts: ScanOptions, index: Awaited<ReturnType<typeof scanWorkspace>>, catalogue: Catalogue): FileEntry[] {
-    const supported = index.files.filter((f) => patternsForLanguage(catalogue, f.language).length > 0);
+  private resolveScopedRoots(opts: ScanOptions): vscode.Uri[] {
+    if (opts.scope === 'file' && opts.fileUri) {
+      const root = this.stores.rootForFile(opts.fileUri);
+      return root ? [root] : [];
+    }
+    return this.stores.roots;
+  }
+
+  private async prepareRoot(root: vscode.Uri): Promise<RootContext | undefined> {
+    const store = this.stores.findingsFor(root);
+    const knowledge = this.stores.knowledgeFor(root);
+    if (!store || !knowledge) return undefined;
+
+    const catalogue = loadCatalogue(this.context.extensionPath, knowledge.patterns);
+    const cache = new AnalysisCache(root);
+    await cache.load();
+
+    const index = await scanWorkspace(root);
+    await saveIndex(root, index);
+    const graph = buildGraph(index);
+    await saveGraph(root, graph);
+
+    const currentFiles = new Map(index.files.map((f) => [f.path, f.contentHash]));
+    const rebindStats = await store.rebindOrOrphan(currentFiles);
+    if (rebindStats.rebound + rebindStats.orphaned > 0) {
+      this.output.appendLine(`[scan] ${rootLabel(root)}: rebind ${rebindStats.rebound} moved, ${rebindStats.orphaned} orphaned`);
+    }
+
+    const cycles = findCycles(graph);
+    for (const f of cycleFindings(cycles)) await store.upsertFromAnalysis(f);
+    const intent = await loadIntent(root);
+    if (intent) {
+      for (const f of layerViolations(graph, intent)) await store.upsertFromAnalysis(f);
+    }
+    if (cycles.length > 0 || intent) {
+      this.output.appendLine(`[scan] ${rootLabel(root)}: deterministic ${cycles.length} cycle(s)${intent ? ', layer rules applied' : ''}`);
+    }
+
+    return { root, store, knowledge, catalogue, cache, index, graph };
+  }
+
+  private targetsFor(opts: ScanOptions, ctx: RootContext): FileEntry[] {
+    const supported = ctx.index.files.filter((f) => patternsForLanguage(ctx.catalogue, f.language).length > 0);
     if (opts.scope === 'full') return supported;
     if (!opts.fileUri) return [];
     const rel = vscode.workspace.asRelativePath(opts.fileUri, false);
     return supported.filter((f) => f.path === rel);
   }
 
-  private async gatherNeighbors(
-    root: vscode.Uri,
-    entry: FileEntry,
-    graph: DependencyGraph,
-    index: Awaited<ReturnType<typeof scanWorkspace>>,
-  ): Promise<NeighborFile[]> {
-    const { imports, importedBy } = neighborsOf(graph, entry.path);
-    // Interleave so both directions are represented up to the budget.
+  private async gatherNeighbors(ctx: RootContext, entry: FileEntry): Promise<NeighborFile[]> {
+    const { imports, importedBy } = neighborsOf(ctx.graph, entry.path);
     const picks: { path: string; relation: 'imports' | 'importedBy' }[] = [];
     const iA = imports.slice(0, MAX_NEIGHBORS);
     const iB = importedBy.slice(0, MAX_NEIGHBORS);
@@ -156,12 +179,12 @@ export class ScanRunner {
       if (i < iB.length && picks.length < MAX_NEIGHBORS) picks.push({ path: iB[i], relation: 'importedBy' });
     }
     const out: NeighborFile[] = [];
-    const byPath = new Map(index.files.map((f) => [f.path, f]));
+    const byPath = new Map(ctx.index.files.map((f) => [f.path, f]));
     for (const p of picks) {
       const nEntry = byPath.get(p.path);
       if (!nEntry) continue;
       try {
-        const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(root, p.path));
+        const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(ctx.root, p.path));
         out.push({ path: p.path, language: nEntry.language, text: Buffer.from(bytes).toString('utf8'), relation: p.relation });
       } catch {
         // skip unreadable
@@ -170,26 +193,18 @@ export class ScanRunner {
     return out;
   }
 
-  private async preflight(
-    targets: FileEntry[],
-    catalogue: Catalogue,
-    cache: AnalysisCache,
-    graph: DependencyGraph,
-    index: Awaited<ReturnType<typeof scanWorkspace>>,
-  ): Promise<{ totalChars: number; uncached: FileEntry[] }> {
+  private preflight(targets: { ctx: RootContext; entry: FileEntry }[]): { totalChars: number; uncached: FileEntry[] } {
     const model = this.client.model();
     const uncached: FileEntry[] = [];
     let totalChars = 0;
-    for (const t of targets) {
-      // Estimate without the neighbor hash (cheap approximation).
-      const key = AnalysisCache.key(t.contentHash, catalogue.hash, model);
-      if (cache.get(key)) continue;
-      uncached.push(t);
-      totalChars += t.size;
-      // Add neighbor budget — same cap as analyzer.
-      const { imports, importedBy } = neighborsOf(graph, t.path);
+    for (const { ctx, entry } of targets) {
+      const key = AnalysisCache.key(entry.contentHash, ctx.catalogue.hash, model);
+      if (ctx.cache.get(key)) continue;
+      uncached.push(entry);
+      totalChars += entry.size;
+      const { imports, importedBy } = neighborsOf(ctx.graph, entry.path);
       const neighborPaths = [...imports.slice(0, MAX_NEIGHBORS), ...importedBy.slice(0, MAX_NEIGHBORS)].slice(0, MAX_NEIGHBORS);
-      const byPath = new Map(index.files.map((f) => [f.path, f]));
+      const byPath = new Map(ctx.index.files.map((f) => [f.path, f]));
       for (const p of neighborPaths) {
         const n = byPath.get(p);
         if (n) totalChars += Math.min(n.size, 8000);
@@ -208,4 +223,8 @@ export class ScanRunner {
     const pick = await vscode.window.showWarningMessage(msg, { modal: true }, 'Proceed');
     return pick === 'Proceed';
   }
+}
+
+function rootLabel(root: vscode.Uri): string {
+  return root.path.split('/').filter(Boolean).pop() ?? root.path;
 }

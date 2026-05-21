@@ -74,6 +74,10 @@
       {
         "command": "codeup.apiKey.clear",
         "title": "Codeup: Clear Anthropic API Key"
+      },
+      {
+        "command": "codeup.intent.suggest",
+        "title": "Codeup: Suggest Architectural Intent"
       }
     ],
     "menus": {

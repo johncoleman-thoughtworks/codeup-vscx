@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { Finding, Priority, Status } from './findings/schema';
 import { FindingsStore } from './findings/store';
+import { WorkspaceStores } from './workspaceStores';
 
 export class DetailsView {
   private panel: vscode.WebviewPanel | undefined;
@@ -8,11 +9,20 @@ export class DetailsView {
 
   constructor(
     private readonly context: vscode.ExtensionContext,
-    private readonly store: FindingsStore,
+    private readonly stores: WorkspaceStores,
   ) {
-    store.onDidChange(() => {
+    stores.onDidChange(() => {
       if (this.currentId) this.render(this.currentId);
     });
+  }
+
+  private findStoreFor(id: string): { store: FindingsStore; finding: Finding } | undefined {
+    for (const root of this.stores.roots) {
+      const store = this.stores.findingsFor(root);
+      const f = store?.get(id);
+      if (store && f) return { store, finding: f };
+    }
+    return undefined;
   }
 
   show(id: string): void {
@@ -36,28 +46,31 @@ export class DetailsView {
 
   private async onMessage(msg: { type: string; status?: Status; priority?: Priority; note?: string }): Promise<void> {
     if (!this.currentId) return;
+    const located = this.findStoreFor(this.currentId);
+    if (!located) return;
+    const { store } = located;
     switch (msg.type) {
       case 'confirm':
-        await this.store.updateStatus(this.currentId, 'confirmed');
+        await store.updateStatus(this.currentId, 'confirmed');
         break;
       case 'dismiss': {
         const note = await vscode.window.showInputBox({
-          prompt: 'Why is this being dismissed? (saved as knowledge entry in M4)',
+          prompt: 'Why is this being dismissed? (saved to the knowledge base)',
         });
-        await this.store.updateStatus(this.currentId, 'dismissed', note);
+        await store.updateStatus(this.currentId, 'dismissed', note);
         break;
       }
       case 'fixed':
-        await this.store.updateStatus(this.currentId, 'fixed');
+        await store.updateStatus(this.currentId, 'fixed');
         break;
       case 'reopen':
-        await this.store.updateStatus(this.currentId, 'unconfirmed', 'reopened');
+        await store.updateStatus(this.currentId, 'unconfirmed', 'reopened');
         break;
       case 'setStatus':
-        if (msg.status) await this.store.updateStatus(this.currentId, msg.status, msg.note);
+        if (msg.status) await store.updateStatus(this.currentId, msg.status, msg.note);
         break;
       case 'setPriority':
-        if (msg.priority) await this.store.updatePriority(this.currentId, msg.priority);
+        if (msg.priority) await store.updatePriority(this.currentId, msg.priority);
         break;
       case 'open':
         vscode.commands.executeCommand('codeup.findings.openFinding', this.currentId);
@@ -67,11 +80,12 @@ export class DetailsView {
 
   private render(id: string): void {
     if (!this.panel) return;
-    const f = this.store.get(id);
-    if (!f) {
+    const located = this.findStoreFor(id);
+    if (!located) {
       this.panel.webview.html = `<html><body><p>Finding not found.</p></body></html>`;
       return;
     }
+    const f = located.finding;
     this.panel.title = `${f.category} — ${f.location.file}`;
     this.panel.webview.html = this.html(f);
   }

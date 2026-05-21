@@ -9,3 +9,9 @@ out/
 .env
 .env.*
 !.env.example
+
+# Codeup generated state (per-machine, regenerated on scan).
+# Keep .codeup/findings/, .codeup/knowledge/, .codeup/intent.yaml tracked —
+# those are the parts that travel with the repo and get PR-reviewed.
+.codeup/index/
+.codeup/cache/

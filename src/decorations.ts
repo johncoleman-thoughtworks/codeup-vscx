@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 import { Finding, Severity } from './findings/schema';
-import { FindingsStore } from './findings/store';
+import { WorkspaceStores } from './workspaceStores';
 
 export class DecorationManager {
   private readonly decorationTypes: Record<Severity, vscode.TextEditorDecorationType>;
   private readonly disposables: vscode.Disposable[] = [];
 
-  constructor(private readonly store: FindingsStore) {
+  constructor(private readonly stores: WorkspaceStores) {
     this.decorationTypes = {
       high: vscode.window.createTextEditorDecorationType({
         gutterIconPath: undefined,
@@ -32,7 +32,7 @@ export class DecorationManager {
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor(() => this.applyToActive()),
       vscode.workspace.onDidOpenTextDocument(() => this.applyToActive()),
-      store.onDidChange(() => this.applyAll()),
+      stores.onDidChange(() => this.applyAll()),
     );
     this.applyAll();
   }
@@ -43,10 +43,12 @@ export class DecorationManager {
   }
 
   findingsForDocument(doc: vscode.TextDocument): Finding[] {
-    const ws = vscode.workspace.getWorkspaceFolder(doc.uri);
-    if (!ws) return [];
+    const root = this.stores.rootForFile(doc.uri);
+    if (!root) return [];
+    const store = this.stores.findingsFor(root);
+    if (!store) return [];
     const rel = vscode.workspace.asRelativePath(doc.uri, false);
-    return this.store.all.filter((f) => f.status !== 'fixed' && f.status !== 'dismissed' && f.location.file === rel);
+    return store.all.filter((f) => f.status !== 'fixed' && f.status !== 'dismissed' && f.location.file === rel);
   }
 
   private applyAll(): void {

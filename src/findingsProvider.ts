@@ -1,9 +1,15 @@
 import * as vscode from 'vscode';
 import { Finding, Severity } from './findings/schema';
-import { FindingsStore } from './findings/store';
+import { WorkspaceStores } from './workspaceStores';
 
 type GroupBy = 'severity' | 'category' | 'status';
-type Node = GroupNode | FindingNode;
+type Node = RootNode | GroupNode | FindingNode;
+
+interface RootNode {
+  kind: 'root';
+  rootName: string;
+  children: { finding: Finding; root: vscode.Uri }[];
+}
 
 interface GroupNode {
   kind: 'group';
@@ -24,8 +30,8 @@ export class FindingsProvider implements vscode.TreeDataProvider<Node> {
 
   private groupBy: GroupBy = 'severity';
 
-  constructor(private readonly store: FindingsStore) {
-    store.onDidChange(() => this._onDidChangeTreeData.fire());
+  constructor(private readonly stores: WorkspaceStores) {
+    stores.onDidChange(() => this._onDidChangeTreeData.fire());
   }
 
   setGroupBy(g: GroupBy): void {
@@ -38,6 +44,15 @@ export class FindingsProvider implements vscode.TreeDataProvider<Node> {
   }
 
   getTreeItem(node: Node): vscode.TreeItem {
+    if (node.kind === 'root') {
+      const item = new vscode.TreeItem(
+        `${node.rootName} (${node.children.length})`,
+        vscode.TreeItemCollapsibleState.Expanded,
+      );
+      item.iconPath = new vscode.ThemeIcon('folder');
+      item.contextValue = 'codeup.root';
+      return item;
+    }
     if (node.kind === 'group') {
       const item = new vscode.TreeItem(
         `${node.label} (${node.children.length})`,
@@ -61,9 +76,21 @@ export class FindingsProvider implements vscode.TreeDataProvider<Node> {
   }
 
   getChildren(node?: Node): Node[] {
-    const findings = this.store.all.filter((f) => f.status !== 'fixed' && f.status !== 'dismissed');
+    const all = this.stores.allFindingsWithRoot.filter(
+      ({ finding }) => finding.status !== 'fixed' && finding.status !== 'dismissed',
+    );
+    const roots = this.stores.roots;
     if (!node) {
-      return this.groupFindings(findings);
+      if (roots.length > 1) {
+        return roots.map<RootNode>((root) => {
+          const children = all.filter(({ root: r }) => r.toString() === root.toString());
+          return { kind: 'root', rootName: rootName(root), children };
+        });
+      }
+      return this.groupFindings(all.map(({ finding }) => finding));
+    }
+    if (node.kind === 'root') {
+      return this.groupFindings(node.children.map(({ finding }) => finding));
     }
     if (node.kind === 'group') {
       return node.children
@@ -96,6 +123,10 @@ export class FindingsProvider implements vscode.TreeDataProvider<Node> {
     }
     return result;
   }
+}
+
+function rootName(root: vscode.Uri): string {
+  return root.path.split('/').filter(Boolean).pop() ?? root.path;
 }
 
 function severityIcon(sev: Severity): vscode.ThemeIcon {

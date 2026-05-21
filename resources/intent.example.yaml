@@ -1,6 +1,11 @@
 # Example .codeup/intent.yaml. Copy into your workspace and edit the rules.
-# Each layer is a path-prefix match; the most-specific (longest) prefix wins.
-# `cannotDependOn` lists layer names that this layer is forbidden to import from.
+#
+# Each layer's `match` is a minimatch glob against the workspace-relative
+# file path. Trailing-slash directory rules (e.g. `src/foo/`) are treated as
+# `src/foo/**` automatically, so simple prefix-style rules still work.
+# The longest matching pattern wins.
+#
+# `cannotDependOn` lists other layer names this layer must not import from.
 
 layers:
   - layer: domain
@@ -18,3 +23,12 @@ layers:
   - layer: web
     match: src/main/java/com/example/web/
     cannotDependOn: []
+
+# Monorepo example — apply the same layer rules across every package:
+#
+#   - layer: domain
+#     match: 'packages/*/src/**/domain/**'
+#     cannotDependOn: [infrastructure, web]
+#   - layer: web
+#     match: 'packages/*/src/**/web/**'
+#     cannotDependOn: []

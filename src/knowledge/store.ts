@@ -37,13 +37,13 @@ export class KnowledgeStore {
   private watcher: vscode.FileSystemWatcher | undefined;
   private disposed = false;
 
-  constructor(private readonly output: vscode.OutputChannel) {}
+  constructor(private readonly root: vscode.Uri, private readonly output: vscode.OutputChannel) {}
+
+  get rootUri(): vscode.Uri { return this.root; }
 
   async init(): Promise<void> {
     await this.reload();
-    const root = this.rootUri();
-    if (!root) return;
-    const pattern = new vscode.RelativePattern(root, '.codeup/knowledge/*.yaml');
+    const pattern = new vscode.RelativePattern(this.root, '.codeup/knowledge/*.yaml');
     this.watcher = vscode.workspace.createFileSystemWatcher(pattern);
     this.watcher.onDidCreate(() => this.reload());
     this.watcher.onDidChange(() => this.reload());
@@ -104,16 +104,10 @@ export class KnowledgeStore {
     return entry;
   }
 
-  private rootUri(): vscode.Uri | undefined {
-    return vscode.workspace.workspaceFolders?.[0]?.uri;
-  }
-
   private async reload(): Promise<void> {
-    const root = this.rootUri();
-    if (!root) return;
-    this.dismissals = (await this.readYaml<DismissalsFile>(root, REL.dismissals, DISMISSAL_CURRENT_VERSION, DISMISSAL_MIGRATIONS))?.entries ?? [];
-    this.exemplars = (await this.readYaml<ExemplarsFile>(root, REL.exemplars, EXEMPLAR_CURRENT_VERSION, EXEMPLAR_MIGRATIONS))?.entries ?? [];
-    this.customPatterns = (await this.readYaml<CustomPatternsFile>(root, REL.patterns, CUSTOM_PATTERNS_CURRENT_VERSION, CUSTOM_PATTERNS_MIGRATIONS))?.patterns ?? [];
+    this.dismissals = (await this.readYaml<DismissalsFile>(this.root, REL.dismissals, DISMISSAL_CURRENT_VERSION, DISMISSAL_MIGRATIONS))?.entries ?? [];
+    this.exemplars = (await this.readYaml<ExemplarsFile>(this.root, REL.exemplars, EXEMPLAR_CURRENT_VERSION, EXEMPLAR_MIGRATIONS))?.entries ?? [];
+    this.customPatterns = (await this.readYaml<CustomPatternsFile>(this.root, REL.patterns, CUSTOM_PATTERNS_CURRENT_VERSION, CUSTOM_PATTERNS_MIGRATIONS))?.patterns ?? [];
     if (this.disposed) return;
     this._onDidChange.fire();
   }
@@ -146,11 +140,9 @@ export class KnowledgeStore {
   }
 
   private async writeYaml<T>(rel: string, content: T): Promise<void> {
-    const root = this.rootUri();
-    if (!root) return;
-    await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(root, REL.dir));
+    await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(this.root, REL.dir));
     const body = yaml.dump(content, { lineWidth: 100, noRefs: true });
-    await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(root, rel), Buffer.from(body, 'utf8'));
+    await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(this.root, rel), Buffer.from(body, 'utf8'));
   }
 }
 

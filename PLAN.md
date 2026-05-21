@@ -91,6 +91,6 @@ Goal: tool improves over time on each codebase.
 ## Open questions
 
 1. JetBrains port — same shape via IntelliJ Platform SDK, or skip for now?
-2. Multi-root workspaces — one findings dir per root, or merged view?
-3. Monorepo scale — at >5k files, does the in-memory project index need to spill to sqlite?
+2. ~~Multi-root workspaces — one findings dir per root, or merged view?~~ **Decided**: per-root state on disk (each project's findings travel with its repo) + merged tree in the UI (one outer group per root when count > 1). WorkspaceStores aggregates; scan runner iterates roots.
+3. ~~Monorepo scale — at >5k files, does the in-memory project index need to spill to sqlite?~~ **Decided**: analysis cache split into one file per entry under `.codeup/cache/entries/<hash>.json`, lazy-loaded. Index and graph remain in-memory JSON (a 50k-file index is ~25 MB JSON — fine to parse). Old monolithic `analysis.json` is migrated automatically on first open. SQLite revisit if Windows AV makes file-per-entry painful in practice.
 4. License — internal tool, OSS, or commercial?

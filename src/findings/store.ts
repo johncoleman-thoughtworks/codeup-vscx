@@ -22,7 +22,9 @@ export class FindingsStore {
 
   private knowledge: KnowledgeStore | undefined;
 
-  constructor(private readonly output: vscode.OutputChannel) {}
+  constructor(private readonly root: vscode.Uri, private readonly output: vscode.OutputChannel) {}
+
+  get rootUri(): vscode.Uri { return this.root; }
 
   attachKnowledge(knowledge: KnowledgeStore): void {
     this.knowledge = knowledge;
@@ -44,7 +46,6 @@ export class FindingsStore {
 
   async init(): Promise<void> {
     const dir = this.findingsDirUri();
-    if (!dir) return;
     await this.reloadAll();
 
     const pattern = new vscode.RelativePattern(dir, '*.yaml');
@@ -54,17 +55,14 @@ export class FindingsStore {
     this.watcher.onDidDelete(() => this.reloadAll());
   }
 
-  private findingsDirUri(): vscode.Uri | undefined {
-    const ws = vscode.workspace.workspaceFolders?.[0];
-    if (!ws) return undefined;
+  private findingsDirUri(): vscode.Uri {
     const cfg = vscode.workspace.getConfiguration('codeup');
     const rel = cfg.get<string>('findingsDir', '.codeup/findings');
-    return vscode.Uri.joinPath(ws.uri, rel);
+    return vscode.Uri.joinPath(this.root, rel);
   }
 
   private async reloadAll(): Promise<void> {
     const dir = this.findingsDirUri();
-    if (!dir) return;
     const next = new Map<string, Finding>();
     try {
       const entries = await vscode.workspace.fs.readDirectory(dir);
@@ -115,7 +113,6 @@ export class FindingsStore {
 
   async save(finding: Finding): Promise<void> {
     const dir = this.findingsDirUri();
-    if (!dir) throw new Error('no workspace open');
     await vscode.workspace.fs.createDirectory(dir);
     const uri = vscode.Uri.joinPath(dir, `${finding.id}.yaml`);
     const body = yaml.dump(finding, { lineWidth: 100, noRefs: true });
