@@ -3,11 +3,11 @@
   "displayName": "Codeup",
   "description": "Architectural anti-pattern findings for your codebase, powered by Claude.",
   "version": "1.0.0",
-  "publisher": "qbyte",
+  "publisher": "johncoleman-thoughtworks",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/qbyte/codeup.git"
+    "url": "https://github.com/johncoleman-thoughtworks/codeup-vscx.git"
   },
   "engines": {
     "vscode": "^1.90.0"
