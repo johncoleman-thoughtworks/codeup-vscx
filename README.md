@@ -66,6 +66,7 @@ All commands are available from the Command Palette (`⇧⌘P` / `Ctrl+Shift+P`)
 |---|---|
 | `Codeup: Run Full Scan` | Scan every supported file in the workspace. Modal cost estimate first. |
 | `Codeup: Scan Current File` | Scan the file in the active editor only. No cost prompt. |
+| `Codeup: Scan Open Tabs` | Scan every file currently open in an editor tab. Cost prompt only if >1 uncached file. |
 | `Codeup: Suggest Architectural Intent` | Draft a `.codeup/intent.yaml` from the workspace's directory + dependency layout. |
 | `Codeup: Refresh Findings` | Reload findings from disk (use after editing YAML by hand). |
 | `Codeup: Focus Findings Panel` | Reveal the Codeup tree view. |

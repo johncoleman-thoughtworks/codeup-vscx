@@ -19,8 +19,9 @@ const OUTPUT_COST_PER_MTOK = 15.0;
 const CHARS_PER_TOKEN = 3.6;
 
 export interface ScanOptions {
-  scope: 'full' | 'file';
-  fileUri?: vscode.Uri;
+  scope: 'full' | 'file' | 'files';
+  fileUri?: vscode.Uri;        // for 'file'
+  fileUris?: vscode.Uri[];     // for 'files'
   skipCostPrompt?: boolean;
 }
 
@@ -72,7 +73,11 @@ export class ScanRunner {
     }
 
     const { totalChars, uncached } = this.preflight(allTargets);
-    if (!opts.skipCostPrompt && opts.scope === 'full' && uncached.length > 0) {
+    const shouldPrompt =
+      !opts.skipCostPrompt &&
+      uncached.length > 0 &&
+      (opts.scope === 'full' || (opts.scope === 'files' && uncached.length > 1));
+    if (shouldPrompt) {
       const ok = await this.confirmCost(uncached.length, totalChars);
       if (!ok) return;
     }
@@ -82,7 +87,10 @@ export class ScanRunner {
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: opts.scope === 'full' ? 'Codeup: scanning workspace' : `Codeup: scanning ${opts.fileUri?.path.split('/').pop()}`,
+          title:
+            opts.scope === 'full' ? 'Codeup: scanning workspace' :
+            opts.scope === 'files' ? `Codeup: scanning ${opts.fileUris?.length ?? 0} open tab(s)` :
+            `Codeup: scanning ${opts.fileUri?.path.split('/').pop()}`,
           cancellable: true,
         },
         async (progress, token) => {
@@ -125,6 +133,14 @@ export class ScanRunner {
       const root = this.stores.rootForFile(opts.fileUri);
       return root ? [root] : [];
     }
+    if (opts.scope === 'files' && opts.fileUris) {
+      const roots = new Map<string, vscode.Uri>();
+      for (const uri of opts.fileUris) {
+        const root = this.stores.rootForFile(uri);
+        if (root) roots.set(root.toString(), root);
+      }
+      return [...roots.values()];
+    }
     return this.stores.roots;
   }
 
@@ -164,6 +180,19 @@ export class ScanRunner {
   private targetsFor(opts: ScanOptions, ctx: RootContext): FileEntry[] {
     const supported = ctx.index.files.filter((f) => patternsForLanguage(ctx.catalogue, f.language).length > 0);
     if (opts.scope === 'full') return supported;
+    if (opts.scope === 'files' && opts.fileUris) {
+      const wanted = new Set<string>();
+      for (const uri of opts.fileUris) {
+        const owningRoot = this.stores.rootForFile(uri);
+        if (!owningRoot || owningRoot.toString() !== ctx.root.toString()) continue;
+        // workspace-relative within the owning root
+        const rel = uri.path.startsWith(ctx.root.path)
+          ? uri.path.slice(ctx.root.path.length).replace(/^\/+/, '')
+          : vscode.workspace.asRelativePath(uri, false);
+        wanted.add(rel);
+      }
+      return supported.filter((f) => wanted.has(f.path));
+    }
     if (!opts.fileUri) return [];
     const rel = vscode.workspace.asRelativePath(opts.fileUri, false);
     return supported.filter((f) => f.path === rel);

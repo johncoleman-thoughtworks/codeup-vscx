@@ -43,6 +43,10 @@
         "title": "Codeup: Scan Current File"
       },
       {
+        "command": "codeup.scan.openTabs",
+        "title": "Codeup: Scan Open Tabs"
+      },
+      {
         "command": "codeup.findings.refresh",
         "title": "Codeup: Refresh Findings",
         "icon": "$(refresh)"

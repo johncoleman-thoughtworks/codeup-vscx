@@ -71,6 +71,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
       return runner.run({ scope: 'file', fileUri: uri, skipCostPrompt: true });
     }),
+    vscode.commands.registerCommand('codeup.scan.openTabs', () => {
+      const uris = collectOpenTabUris();
+      if (uris.length === 0) {
+        vscode.window.showWarningMessage('Codeup: no open editor tabs to scan.');
+        return;
+      }
+      return runner.run({ scope: 'files', fileUris: uris });
+    }),
     vscode.commands.registerCommand('codeup.apiKey.set', async () => {
       await clearApiKey(context);
       client.reset();
@@ -152,4 +160,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 export function deactivate(): void {
   // disposables handle cleanup
+}
+
+function collectOpenTabUris(): vscode.Uri[] {
+  const seen = new Set<string>();
+  const out: vscode.Uri[] = [];
+  for (const group of vscode.window.tabGroups.all) {
+    for (const tab of group.tabs) {
+      const input = tab.input;
+      if (input instanceof vscode.TabInputText) {
+        const key = input.uri.toString();
+        if (!seen.has(key)) { seen.add(key); out.push(input.uri); }
+      }
+    }
+  }
+  return out;
 }
