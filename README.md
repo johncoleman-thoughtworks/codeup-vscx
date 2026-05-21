@@ -58,6 +58,21 @@ Codeup drops a `.gitignore` inside each generated directory (`.codeup/index/` an
 
 Keep `.codeup/findings/`, `.codeup/knowledge/`, and `.codeup/intent.yaml` **tracked** — they're the parts that travel with the repo and accumulate decisions.
 
+## Commands
+
+All commands are available from the Command Palette (`⇧⌘P` / `Ctrl+Shift+P`):
+
+| Command | Purpose |
+|---|---|
+| `Codeup: Run Full Scan` | Scan every supported file in the workspace. Modal cost estimate first. |
+| `Codeup: Scan Current File` | Scan the file in the active editor only. No cost prompt. |
+| `Codeup: Suggest Architectural Intent` | Draft a `.codeup/intent.yaml` from the workspace's directory + dependency layout. |
+| `Codeup: Refresh Findings` | Reload findings from disk (use after editing YAML by hand). |
+| `Codeup: Focus Findings Panel` | Reveal the Codeup tree view. |
+| `Codeup: Group Findings by Severity / Category / Status` | Switch the tree's grouping. |
+| `Codeup: Set Anthropic API Key` | Store / replace the API key in `SecretStorage`. |
+| `Codeup: Clear Anthropic API Key` | Forget the stored key. |
+
 ## Settings
 
 | Setting | Default | Description |
@@ -81,24 +96,15 @@ layers:
 
 To get a starting draft, run `Codeup: Suggest Architectural Intent`. Codeup compresses the directory layout + dependency graph into a small summary, asks Claude to propose layer rules, and writes the result to `.codeup/intent.yaml` (or opens it as an untitled buffer if the file already exists). Review and edit before your next scan — the proposal is a starting point, not the final word.
 
+See [`resources/intent.example.yaml`](resources/intent.example.yaml) for a hand-authored example covering the typical domain / application / infrastructure / web layout.
 
-```yaml
-layers:
-  - layer: domain
-    match: src/main/java/com/example/domain/
-    cannotDependOn: [infrastructure, web]
-  - layer: application
-    match: src/main/java/com/example/application/
-    cannotDependOn: [web]
-  - layer: web
-    match: src/main/java/com/example/web/
-    cannotDependOn: []
-  - layer: infrastructure
-    match: src/main/java/com/example/infrastructure/
-    cannotDependOn: []
-```
+### How to check intent is being obeyed
 
-See [`resources/intent.example.yaml`](resources/intent.example.yaml) for a starting template.
+Layer-rule enforcement runs as part of every scan — no separate command. After `Codeup: Run Full Scan` (or `Codeup: Scan Current File`):
+
+1. The **Codeup** output channel shows `[scan] <root>: deterministic N cycle(s), layer rules applied` once `intent.yaml` has been read.
+2. Any forbidden import shows up in the findings tree as a `layer-violation` finding (try `Codeup: Group Findings by Category` if you want to find them at a glance).
+3. Each violation is persisted as `.codeup/findings/layer-violation-<hash>.yaml`. Zero API cost — these are computed from the dependency graph plus your rules.
 
 ## Multi-root workspaces
 
@@ -116,7 +122,7 @@ Each root keeps its own `.codeup/` on disk (state travels with each project's re
 ```bash
 npm install
 npm run compile         # tsc
-npm test                # 65 unit tests via node:test
+npm test                # 74 unit tests via node:test
 npm run test:integration # @vscode/test-electron (first run downloads VS Code)
 ```
 
