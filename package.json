@@ -2,14 +2,29 @@
   "name": "codeup",
   "displayName": "Codeup",
   "description": "Architectural anti-pattern findings for your codebase, powered by Claude.",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "publisher": "qbyte",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/qbyte/codeup.git"
+  },
   "engines": {
     "vscode": "^1.90.0"
   },
   "categories": [
     "Linters",
     "Other"
+  ],
+  "keywords": [
+    "architecture",
+    "anti-patterns",
+    "code review",
+    "claude",
+    "anthropic",
+    "static analysis",
+    "code quality",
+    "sarif"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
@@ -123,7 +138,8 @@
     "test": "npm run test:unit",
     "test:unit": "node --test 'dist/test/unit/*.test.js'",
     "test:integration": "node ./dist/test/integration/runTest.js",
-    "test:all": "npm run test:unit && npm run test:integration"
+    "test:all": "npm run test:unit && npm run test:integration",
+    "package": "vsce package"
   },
   "devDependencies": {
     "@types/glob": "^8.1.0",
@@ -132,6 +148,7 @@
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.90.0",
     "@vscode/test-electron": "^2.4.0",
+    "@vscode/vsce": "^3.2.0",
     "glob": "^10.3.10",
     "mocha": "^10.4.0",
     "typescript": "^5.4.0"

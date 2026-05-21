@@ -1,12 +1,26 @@
+# Source — only compiled output ships
+src/**
+**/*.ts
+**/*.map
+tsconfig.json
+
+# Dev-only state
 .vscode/**
 .vscode-test/**
-src/**
 .gitignore
-tsconfig.json
-**/*.map
-**/*.ts
-node_modules/**
-!node_modules/@anthropic-ai/**
-!node_modules/js-yaml/**
-!node_modules/ignore/**
-!resources/**
+.codeup/**
+.idea/**
+.claude/**
+codeup.iml
+
+# Test artifacts
+dist/test/**
+
+# Misc
+.DS_Store
+*.vsix
+PLAN.md
+TESTING.md
+
+# vsce walks package.json dependencies itself — don't fight it with manual
+# node_modules excludes. resources/ ships by default (no exclusion).
