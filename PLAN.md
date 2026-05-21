@@ -42,17 +42,18 @@ Goal: Claude actually finds things inside individual files.
 
 **Verify:** scan a small TS project → findings appear in the tree, statuses persist across reloads, second scan with no changes makes zero API calls.
 
-## Milestone 3 — Dependency graph + cross-file analysis (3–4 weeks)
+## Milestone 3 — Dependency graph + cross-file analysis (done)
 
 Goal: catch shotgun surgery, divergent change, leaky abstraction, cyclic dependencies.
 
-- [ ] Tree-sitter integration (`web-tree-sitter`) for language-agnostic AST extraction; start with TS/JS/Python.
-- [ ] For TS/JS specifically: TypeScript Compiler API for richer symbol resolution.
-- [ ] `src/scanner/graph.ts` — module dependency graph (nodes = files, edges = imports/calls).
-- [ ] Deterministic checks (no LLM): cycle detection, layer-violation rules from `.codeup/intent.yaml`.
-- [ ] Cluster batching: walk graph to form related-file clusters, send to Claude as a group for cross-file patterns.
-- [ ] Finding locations: file path + AST path + content hash; rebind step when files move.
-- [ ] Orphaned-findings view for locations that no longer resolve.
+- [x] Per-language regex-based import extraction (Java, Kotlin, Scala, TS/JS, Python, Go, C#) — tree-sitter deferred.
+- [x] `src/scanner/graph.ts` — module dependency graph + Tarjan SCC cycle detection.
+- [x] Deterministic checks (no LLM): cycle detection, layer-violation rules from `.codeup/intent.yaml`.
+- [x] Cross-file LLM context: neighbor files (importers + imported) included in single-file analysis prompt.
+- [x] Finding locations include content hash; rebind step on rescan when files move.
+- [x] Orphaned-findings group in tree view.
+- [ ] Tree-sitter integration (deferred — regex import extraction is good enough for the patterns we have).
+- [ ] AST path stability (deferred — content hash + line works for now).
 
 **Verify:** introduce a cycle into a sample project → flagged without an API call; rename a file with a confirmed finding → finding rebinds, history records the move.
 

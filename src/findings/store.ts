@@ -146,6 +146,50 @@ export class FindingsStore {
     return finding;
   }
 
+  async rebindOrOrphan(currentFiles: Map<string, string>): Promise<{ rebound: number; orphaned: number }> {
+    let rebound = 0;
+    let orphaned = 0;
+    for (const f of [...this.findings.values()]) {
+      const exists = currentFiles.has(f.location.file);
+      if (exists) continue;
+      // Try content-hash match — file probably moved.
+      const fromHash = f.location.contentHash;
+      let target: string | undefined;
+      if (fromHash) {
+        for (const [path, hash] of currentFiles) if (hash === fromHash) { target = path; break; }
+      }
+      if (target) {
+        const event: HistoryEvent = {
+          timestamp: new Date().toISOString(),
+          event: 'rebound',
+          from: f.location.file,
+          to: target,
+        };
+        await this.save({
+          ...f,
+          location: { ...f.location, file: target },
+          history: [...f.history, event],
+        });
+        rebound++;
+      } else if (!f.location.file.startsWith('__orphan__/')) {
+        const event: HistoryEvent = {
+          timestamp: new Date().toISOString(),
+          event: 'rebound',
+          from: f.location.file,
+          to: `__orphan__/${f.location.file}`,
+          note: 'source file no longer present and no content-hash match found',
+        };
+        await this.save({
+          ...f,
+          location: { ...f.location, file: `__orphan__/${f.location.file}` },
+          history: [...f.history, event],
+        });
+        orphaned++;
+      }
+    }
+    return { rebound, orphaned };
+  }
+
   async updatePriority(id: string, priority: Priority): Promise<void> {
     const f = this.findings.get(id);
     if (!f) return;

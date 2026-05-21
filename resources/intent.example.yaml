@@ -1,0 +1,20 @@
+# Example .codeup/intent.yaml. Copy into your workspace and edit the rules.
+# Each layer is a path-prefix match; the most-specific (longest) prefix wins.
+# `cannotDependOn` lists layer names that this layer is forbidden to import from.
+
+layers:
+  - layer: domain
+    match: src/main/java/com/example/domain/
+    cannotDependOn: [infrastructure, web]
+
+  - layer: application
+    match: src/main/java/com/example/application/
+    cannotDependOn: [web]
+
+  - layer: infrastructure
+    match: src/main/java/com/example/infrastructure/
+    cannotDependOn: []
+
+  - layer: web
+    match: src/main/java/com/example/web/
+    cannotDependOn: []

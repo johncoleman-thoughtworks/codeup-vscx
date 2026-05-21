@@ -19,8 +19,8 @@ export class AnalysisCache {
 
   constructor(private readonly root: vscode.Uri) {}
 
-  static key(contentHash: string, catalogueHash: string, model: string): string {
-    return `${contentHash}:${catalogueHash}:${model}`;
+  static key(contentHash: string, catalogueHash: string, model: string, neighborsKey = ''): string {
+    return `${contentHash}:${catalogueHash}:${model}:${neighborsKey}`;
   }
 
   async load(): Promise<void> {

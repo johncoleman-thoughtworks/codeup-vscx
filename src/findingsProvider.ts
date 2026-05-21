@@ -74,8 +74,11 @@ export class FindingsProvider implements vscode.TreeDataProvider<Node> {
   }
 
   private groupFindings(findings: Finding[]): GroupNode[] {
+    const orphans = findings.filter((f) => f.location.file.startsWith('__orphan__/'));
+    const live = findings.filter((f) => !f.location.file.startsWith('__orphan__/'));
+
     const groups = new Map<string, Finding[]>();
-    for (const f of findings) {
+    for (const f of live) {
       const key = this.groupBy === 'severity' ? f.severity : this.groupBy === 'category' ? f.category : f.status;
       const arr = groups.get(key) ?? [];
       arr.push(f);
@@ -85,9 +88,13 @@ export class FindingsProvider implements vscode.TreeDataProvider<Node> {
       if (this.groupBy === 'severity') return String(SEVERITY_ORDER[k as Severity] ?? 99);
       return k;
     };
-    return [...groups.entries()]
+    const result: GroupNode[] = [...groups.entries()]
       .sort(([a], [b]) => sortKey(a).localeCompare(sortKey(b)))
       .map(([label, children]) => ({ kind: 'group', label, children }));
+    if (orphans.length > 0) {
+      result.push({ kind: 'group', label: 'orphaned', children: orphans });
+    }
+    return result;
   }
 }
 

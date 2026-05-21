@@ -1,5 +1,24 @@
 schemaVersion: 1
 patterns:
+  # ─── Deterministic checks (no LLM) ─────────────────────────────────────
+  - id: cyclic-dependency
+    name: Cyclic Module Dependency
+    languages: [java, kotlin, scala, typescript, typescriptreact, javascript, javascriptreact, python, go]
+    defaultSeverity: high
+    hint: |
+      Deterministic check (no LLM). Strongly-connected component in the
+      module dependency graph — two or more files that transitively import
+      each other. Detected by codeup-deterministic.
+
+  - id: layer-violation
+    name: Layer Boundary Violation
+    languages: [java, kotlin, scala, typescript, typescriptreact, javascript, javascriptreact, python, go]
+    defaultSeverity: high
+    hint: |
+      Deterministic check (no LLM). Import from one layer into another that
+      configured intent (.codeup/intent.yaml) prohibits. Detected by
+      codeup-deterministic.
+
   - id: anemic-domain-model
     name: Anemic Domain Model
     languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, ruby, scala]
@@ -109,8 +128,12 @@ patterns:
     languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, go, rust, scala]
     defaultSeverity: high
     hint: |
-      Catch blocks (or _ = err patterns) that discard errors without logging,
-      handling, or rethrowing. Hides failures and complicates debugging.
+      Catch blocks that discard the error without recovering — empty catches,
+      `_ = err`, or the common variants: catch + return null, catch + return
+      false, catch + return empty collection, catch + log + return null. The
+      caller can no longer tell success from failure, so failures surface
+      late in unrelated downstream code. If recovery is impossible, let the
+      exception propagate.
 
   - id: misplaced-responsibility
     name: Misplaced Responsibility
@@ -274,6 +297,85 @@ patterns:
       small input variations, or tests being cited where documentation or
       code review would belong. Property-based / generative tests would
       cover the input space far more cheaply for the same code under test.
+
+  # ─── Exception-handling anti-patterns ──────────────────────────────────
+
+  - id: overbroad-exception-catch
+    name: Overbroad Exception Catch
+    languages: [java, kotlin, scala, csharp, typescript, typescriptreact, javascript, python]
+    defaultSeverity: high
+    hint: |
+      A `catch (Exception)` / `catch (Throwable)` / bare `except:` at a layer
+      that cannot actually do anything specific with the failure. Conceals
+      bugs (NPEs, programmer errors) alongside the recoverable case, so the
+      caller cannot distinguish them. Catch the specific exception types you
+      know how to handle; let the rest propagate to a top-level handler.
+
+  - id: lossy-exception-translation
+    name: Lossy Exception Translation
+    languages: [java, kotlin, scala, csharp, typescript, typescriptreact, javascript, python]
+    defaultSeverity: medium
+    hint: |
+      `catch (X e) { throw new Y("message"); }` — re-throws a different type
+      without preserving the original as the cause / inner exception. The
+      stack and context from the original failure are lost, making the new
+      exception much harder to diagnose. Always pass the caught exception
+      as the cause: `throw new Y("...", e)` (Java/Kotlin), `throw new Y("...", e)`
+      (C#), `raise Y(...) from e` (Python).
+
+  - id: exception-for-validation
+    name: Exception Used for Validation Failure
+    languages: [java, kotlin, scala, csharp, typescript, typescriptreact, javascript, python]
+    defaultSeverity: medium
+    hint: |
+      Throwing an exception to signal a validation failure that the caller
+      is expected to handle as routine flow (form validation, parsing user
+      input, business-rule checks). Exceptions are expensive (stack capture)
+      and obscure intent — validation outcomes should be values: a result
+      type, a Notification object (Fowler), or a list of errors. Reserve
+      exceptions for genuinely exceptional, unrecoverable situations.
+
+  - id: low-level-exception-handling-clutter
+    name: Low-Level Exception-Handling Clutter
+    languages: [java, kotlin, scala, csharp, typescript, typescriptreact, javascript, python]
+    defaultSeverity: medium
+    hint: |
+      Repository / DAO / data-access methods cluttered with try-catch
+      boilerplate that translates every failure into a logged-and-discarded
+      result. The same translation belongs in one place — a global
+      exception handler, middleware, or controller-advice — leaving low
+      level code to express only the happy path. Strong signal: the same
+      catch shape repeated in many methods, each ending in `return null` /
+      `return false` / `return new List()`.
+
+  - id: application-throws-not-handles
+    name: Application Code Throws Instead of Handles
+    languages: [java, kotlin, scala, csharp, typescript, typescriptreact, javascript, python]
+    defaultSeverity: medium
+    hint: |
+      Application-layer code — controllers, request handlers, use-cases,
+      service entry points — that mints and throws new domain exceptions
+      instead of terminating them. Application code is the sink for
+      exceptions (translate to HTTP response, queue retry, audit log, fail
+      fast); library / infrastructure code is where exceptions originate.
+      Strong signal: a top-level handler in `controller/`, `handler/`,
+      `routes/`, `api/`, `web/`, `endpoints/`, or `application/` that
+      declares `throws CustomException` or has a `throw new XException(...)`
+      as a non-error terminating statement. Prefer returning a structured
+      result or letting library exceptions bubble to a global handler.
+
+  - id: slow-fail-over-recovery
+    name: Slow Fail / Over-Recovery
+    languages: [java, kotlin, scala, csharp, typescript, typescriptreact, javascript, python]
+    defaultSeverity: high
+    hint: |
+      Code "recovers" from a failure it cannot actually recover from — e.g.
+      catches a database, network, or auth failure and continues with a
+      placeholder value, masking the broken dependency. The program keeps
+      running but in a corrupted state, surfacing later as unexplained
+      data loss or downstream failures. Prefer fail-fast: let the
+      exception propagate (or rethrow after logging) so the orchestrator
+      / circuit breaker / health check can react.
 
   - id: implicit-ambient-context
     name: Implicit Ambient Context

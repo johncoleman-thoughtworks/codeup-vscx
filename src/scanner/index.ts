@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 import ignore, { Ignore } from 'ignore';
 import * as vscode from 'vscode';
+import { extractImports } from './imports';
 
 export interface FileEntry {
   path: string;            // workspace-relative, POSIX separators
@@ -8,6 +9,7 @@ export interface FileEntry {
   size: number;
   contentHash: string;     // sha256 of bytes
   mtime: number;
+  rawImports: string[];    // module specifiers as written in source
 }
 
 export interface ProjectIndex {
@@ -157,12 +159,20 @@ async function fileEntry(root: vscode.Uri, rel: string): Promise<FileEntry | und
   }
   const ext = rel.split('.').pop()?.toLowerCase() ?? '';
   const language = LANGUAGE_BY_EXT[ext] ?? 'plaintext';
+  let rawImports: string[] = [];
+  try {
+    const text = Buffer.from(bytes).toString('utf8');
+    rawImports = extractImports(language, text).raw;
+  } catch {
+    // best-effort
+  }
   return {
     path: rel,
     language,
     size: stat.size,
     contentHash: crypto.createHash('sha256').update(bytes).digest('hex'),
     mtime: stat.mtime,
+    rawImports,
   };
 }
 
