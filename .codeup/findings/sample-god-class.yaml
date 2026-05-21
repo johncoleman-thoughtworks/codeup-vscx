@@ -1,0 +1,21 @@
+schemaVersion: 1
+id: sample-god-class
+category: god-class-risk
+severity: low
+status: unconfirmed
+priority: low
+location:
+  file: src/findings/store.ts
+  line: 4
+explanation: |
+  FindingsStore already handles I/O, validation dispatch, in-memory cache,
+  file watching, and mutation helpers. Small now, but a likely candidate
+  to split as M2/M3 land (e.g. extract a YamlCodec and a watcher).
+suggestedRemediation: |
+  Defer until it actually hurts — flagged so we notice if it grows.
+detectedAt: 2026-05-21T08:55:00Z
+detectedBy: human
+confidence: 0.4
+history:
+  - timestamp: 2026-05-21T08:55:00Z
+    event: detected

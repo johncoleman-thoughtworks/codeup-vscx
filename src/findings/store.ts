@@ -1,0 +1,160 @@
+import * as vscode from 'vscode';
+import * as yaml from 'js-yaml';
+import { Finding, HistoryEvent, Priority, Severity, Status, validateFinding } from './schema';
+
+function severityToPriority(s: Severity): Priority {
+  return s;
+}
+
+export class FindingsStore {
+  private readonly _onDidChange = new vscode.EventEmitter<void>();
+  readonly onDidChange = this._onDidChange.event;
+
+  private findings = new Map<string, Finding>();
+  private watcher: vscode.FileSystemWatcher | undefined;
+  private disposed = false;
+
+  constructor(private readonly output: vscode.OutputChannel) {}
+
+  dispose(): void {
+    this.disposed = true;
+    this.watcher?.dispose();
+    this._onDidChange.dispose();
+  }
+
+  get all(): Finding[] {
+    return [...this.findings.values()];
+  }
+
+  get(id: string): Finding | undefined {
+    return this.findings.get(id);
+  }
+
+  async init(): Promise<void> {
+    const dir = this.findingsDirUri();
+    if (!dir) return;
+    await this.reloadAll();
+
+    const pattern = new vscode.RelativePattern(dir, '*.yaml');
+    this.watcher = vscode.workspace.createFileSystemWatcher(pattern);
+    this.watcher.onDidCreate(() => this.reloadAll());
+    this.watcher.onDidChange(() => this.reloadAll());
+    this.watcher.onDidDelete(() => this.reloadAll());
+  }
+
+  private findingsDirUri(): vscode.Uri | undefined {
+    const ws = vscode.workspace.workspaceFolders?.[0];
+    if (!ws) return undefined;
+    const cfg = vscode.workspace.getConfiguration('codeup');
+    const rel = cfg.get<string>('findingsDir', '.codeup/findings');
+    return vscode.Uri.joinPath(ws.uri, rel);
+  }
+
+  private async reloadAll(): Promise<void> {
+    const dir = this.findingsDirUri();
+    if (!dir) return;
+    const next = new Map<string, Finding>();
+    try {
+      const entries = await vscode.workspace.fs.readDirectory(dir);
+      for (const [name, kind] of entries) {
+        if (kind !== vscode.FileType.File) continue;
+        if (!name.endsWith('.yaml') && !name.endsWith('.yml')) continue;
+        const uri = vscode.Uri.joinPath(dir, name);
+        try {
+          const bytes = await vscode.workspace.fs.readFile(uri);
+          const parsed = yaml.load(Buffer.from(bytes).toString('utf8'));
+          const result = validateFinding(parsed);
+          if (!result.ok) {
+            this.output.appendLine(
+              `[findings] ${name}: ${result.errors.map((e) => `${e.path}: ${e.message}`).join('; ')}`,
+            );
+            continue;
+          }
+          next.set(result.value.id, result.value);
+        } catch (err) {
+          this.output.appendLine(`[findings] ${name}: ${(err as Error).message}`);
+        }
+      }
+    } catch {
+      // dir does not exist yet — fine
+    }
+    if (this.disposed) return;
+    this.findings = next;
+    this._onDidChange.fire();
+  }
+
+  async save(finding: Finding): Promise<void> {
+    const dir = this.findingsDirUri();
+    if (!dir) throw new Error('no workspace open');
+    await vscode.workspace.fs.createDirectory(dir);
+    const uri = vscode.Uri.joinPath(dir, `${finding.id}.yaml`);
+    const body = yaml.dump(finding, { lineWidth: 100, noRefs: true });
+    await vscode.workspace.fs.writeFile(uri, Buffer.from(body, 'utf8'));
+    this.findings.set(finding.id, finding);
+    this._onDidChange.fire();
+  }
+
+  async updateStatus(id: string, status: Status, note?: string): Promise<void> {
+    const f = this.findings.get(id);
+    if (!f) return;
+    const event: HistoryEvent = {
+      timestamp: new Date().toISOString(),
+      event: 'status_changed',
+      from: f.status,
+      to: status,
+      note,
+    };
+    await this.save({ ...f, status, history: [...f.history, event] });
+  }
+
+  async upsertFromAnalysis(partial: Omit<Finding, 'history' | 'status' | 'priority' | 'schemaVersion'> & {
+    status?: Status;
+    priority?: Priority;
+  }): Promise<Finding> {
+    const existing = this.findings.get(partial.id);
+    if (existing) {
+      const next: Finding = {
+        ...existing,
+        category: partial.category,
+        severity: partial.severity,
+        location: partial.location,
+        explanation: partial.explanation,
+        suggestedRemediation: partial.suggestedRemediation,
+        detectedAt: existing.detectedAt,
+        detectedBy: partial.detectedBy,
+        confidence: partial.confidence,
+      };
+      await this.save(next);
+      return next;
+    }
+    const finding: Finding = {
+      schemaVersion: 1,
+      id: partial.id,
+      category: partial.category,
+      severity: partial.severity,
+      status: partial.status ?? 'unconfirmed',
+      priority: partial.priority ?? severityToPriority(partial.severity),
+      location: partial.location,
+      explanation: partial.explanation,
+      suggestedRemediation: partial.suggestedRemediation,
+      detectedAt: partial.detectedAt,
+      detectedBy: partial.detectedBy,
+      confidence: partial.confidence,
+      history: [{ timestamp: partial.detectedAt, event: 'detected' }],
+    };
+    await this.save(finding);
+    return finding;
+  }
+
+  async updatePriority(id: string, priority: Priority): Promise<void> {
+    const f = this.findings.get(id);
+    if (!f) return;
+    const event: HistoryEvent = {
+      timestamp: new Date().toISOString(),
+      event: 'priority_changed',
+      from: f.priority,
+      to: priority,
+    };
+    await this.save({ ...f, priority, history: [...f.history, event] });
+  }
+}

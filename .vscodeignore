@@ -1,0 +1,12 @@
+.vscode/**
+.vscode-test/**
+src/**
+.gitignore
+tsconfig.json
+**/*.map
+**/*.ts
+node_modules/**
+!node_modules/@anthropic-ai/**
+!node_modules/js-yaml/**
+!node_modules/ignore/**
+!resources/**

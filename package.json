@@ -1,0 +1,127 @@
+{
+  "name": "codeup",
+  "displayName": "Codeup",
+  "description": "Architectural anti-pattern findings for your codebase, powered by Claude.",
+  "version": "0.0.1",
+  "publisher": "qbyte",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "codeup",
+          "title": "Codeup",
+          "icon": "$(search-view-icon)"
+        }
+      ]
+    },
+    "views": {
+      "codeup": [
+        {
+          "id": "codeup.findings",
+          "name": "Findings"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "codeup.scan.full",
+        "title": "Codeup: Run Full Scan"
+      },
+      {
+        "command": "codeup.scan.file",
+        "title": "Codeup: Scan Current File"
+      },
+      {
+        "command": "codeup.findings.refresh",
+        "title": "Codeup: Refresh Findings",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "codeup.findings.openFinding",
+        "title": "Codeup: Open Finding"
+      },
+      {
+        "command": "codeup.findings.focus",
+        "title": "Codeup: Focus Findings Panel"
+      },
+      {
+        "command": "codeup.findings.groupBy.severity",
+        "title": "Codeup: Group Findings by Severity"
+      },
+      {
+        "command": "codeup.findings.groupBy.category",
+        "title": "Codeup: Group Findings by Category"
+      },
+      {
+        "command": "codeup.findings.groupBy.status",
+        "title": "Codeup: Group Findings by Status"
+      },
+      {
+        "command": "codeup.apiKey.set",
+        "title": "Codeup: Set Anthropic API Key"
+      },
+      {
+        "command": "codeup.apiKey.clear",
+        "title": "Codeup: Clear Anthropic API Key"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "codeup.findings.refresh",
+          "when": "view == codeup.findings",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Codeup",
+      "properties": {
+        "codeup.model": {
+          "type": "string",
+          "default": "claude-sonnet-4-6",
+          "description": "Anthropic model used for analysis."
+        },
+        "codeup.scan.onSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run incremental scans on file save."
+        },
+        "codeup.findingsDir": {
+          "type": "string",
+          "default": ".codeup/findings",
+          "description": "Directory (relative to workspace root) where findings are stored."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "ignore": "^5.3.1",
+    "js-yaml": "^4.1.0"
+  }
+}

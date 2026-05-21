@@ -1,0 +1,289 @@
+schemaVersion: 1
+patterns:
+  - id: anemic-domain-model
+    name: Anemic Domain Model
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, ruby, scala]
+    defaultSeverity: high
+    hint: |
+      Classes that are essentially data bags (only fields + accessors) with all
+      behaviour living in separate "service" or "manager" classes. Look for
+      domain types whose methods are limited to getters/setters while business
+      logic about that type lives elsewhere.
+
+  - id: god-class
+    name: God Class
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, ruby, scala, cpp]
+    defaultSeverity: high
+    hint: |
+      A single class with too many responsibilities — many fields, many methods,
+      methods that touch unrelated concerns. Suggests missing decomposition.
+
+  - id: primitive-obsession
+    name: Primitive Obsession
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, go, rust, scala]
+    defaultSeverity: medium
+    hint: |
+      Domain concepts represented by primitives (string IDs, untyped string unions,
+      raw numbers for money/duration) instead of value objects or branded types.
+      Easy to confuse parameters, no place to attach invariants.
+
+  - id: feature-envy
+    name: Feature Envy
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, ruby, scala]
+    defaultSeverity: medium
+    hint: |
+      A method that uses another class's data more than its own — repeatedly
+      accessing fields/methods of a parameter or collaborator to make decisions.
+      The method probably wants to live on that other class.
+
+  - id: shotgun-surgery
+    name: Shotgun Surgery
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, ruby, scala, go]
+    defaultSeverity: medium
+    hint: |
+      A single conceptual change requires edits in many small places — typically
+      a missing abstraction (enum, strategy, registry). Detect via cohesion of
+      concerns that span files; usually only visible cross-file.
+
+  - id: long-method
+    name: Long Method
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, ruby, go, rust, scala]
+    defaultSeverity: low
+    hint: |
+      Methods/functions far longer than peers in the same file, with multiple
+      conceptual sections (often delimited by blank lines or comments). Strong
+      candidate for extraction.
+
+  - id: deep-nesting
+    name: Deep Nesting
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, ruby, go, rust]
+    defaultSeverity: low
+    hint: |
+      Conditional / loop nesting more than ~3 levels deep. Usually fixable with
+      early returns, guard clauses, or extracted helpers.
+
+  - id: leaky-abstraction
+    name: Leaky Abstraction
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, scala]
+    defaultSeverity: high
+    hint: |
+      An abstraction whose consumers must know about its implementation details
+      (e.g. exposing raw DB rows, ORM entities, framework types, or internal
+      enums across a module boundary).
+
+  - id: service-locator
+    name: Service Locator / Ambient Access
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, scala]
+    defaultSeverity: medium
+    hint: |
+      Code reaches into a global registry / static container to fetch
+      collaborators rather than receiving them as parameters or constructor
+      arguments. Hides dependencies and breaks testability.
+
+  - id: singleton-misuse
+    name: Singleton Misuse
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, scala]
+    defaultSeverity: medium
+    hint: |
+      Mutable global state hidden behind a singleton, used from many call sites,
+      making behaviour order-dependent and tests interfere with each other.
+
+  - id: data-clump
+    name: Data Clump
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, scala]
+    defaultSeverity: low
+    hint: |
+      The same group of parameters (or fields) appears together repeatedly —
+      a value object trying to escape.
+
+  - id: switch-statements
+    name: Type-Switch on Subtype
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, scala]
+    defaultSeverity: medium
+    hint: |
+      Switch / if-chain dispatching on a type tag or instanceof — usually
+      violates Open/Closed and should be replaced with polymorphism.
+
+  - id: error-swallowing
+    name: Error Swallowing
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, go, rust, scala]
+    defaultSeverity: high
+    hint: |
+      Catch blocks (or _ = err patterns) that discard errors without logging,
+      handling, or rethrowing. Hides failures and complicates debugging.
+
+  - id: misplaced-responsibility
+    name: Misplaced Responsibility
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, ruby, scala]
+    defaultSeverity: medium
+    hint: |
+      Code in a layer/file that does work belonging to a different layer (e.g.
+      DB queries in a controller, HTTP parsing in a domain object, presentation
+      logic in a repository).
+
+  - id: dead-code
+    name: Dead Code
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, go, rust, scala]
+    defaultSeverity: low
+    hint: |
+      Exported symbols, parameters, branches, or files that are never used.
+      Flag only when confident — better to miss than nag.
+
+  - id: cyclic-dependency-risk
+    name: Cyclic Dependency Risk
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, scala]
+    defaultSeverity: medium
+    hint: |
+      Module A imports from module B which (transitively) imports A. Hard to
+      test in isolation and signals a missing abstraction. Cross-file —
+      usually a deferred Pass 4 check.
+
+  - id: magic-number
+    name: Magic Number / String
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, go, rust, scala]
+    defaultSeverity: low
+    hint: |
+      Unexplained literal values embedded in logic with no named constant.
+      Skip in tests and trivial cases.
+
+  - id: temporal-coupling
+    name: Temporal Coupling
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, scala]
+    defaultSeverity: medium
+    hint: |
+      Methods that must be called in a specific order (init → configure → run)
+      without the type system enforcing it. Suggests a state machine or
+      builder is missing.
+
+  - id: comment-rot
+    name: Comment Rot
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, ruby, go, rust, scala]
+    defaultSeverity: low
+    hint: |
+      Comments that contradict the code they sit next to, reference symbols
+      that no longer exist, or describe behaviour the code has outgrown.
+
+  - id: hidden-side-effects
+    name: Hidden Side Effects
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, scala]
+    defaultSeverity: high
+    hint: |
+      Functions named like pure queries (get/find/calculate) that also mutate
+      state, write to disk, or call out to networks. Surprises callers.
+
+  # ─── Halloway "10 ways to add complexity" ──────────────────────────────
+
+  - id: setter-driven-mutability
+    name: Setter-Driven Mutability
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, scala]
+    defaultSeverity: medium
+    hint: |
+      Domain objects exposing public setters (or equivalent re-assignment of
+      fields) after construction. Undermines the constructor's guarantee of a
+      valid state — once any field can mutate, no caller can reason about
+      whether a composed object graph is still sound. Prefer immutable types
+      with copy-with semantics; reserve setters for genuine performance hot
+      paths.
+
+  - id: in-place-mutation
+    name: In-Place Mutation of Shared State
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, scala]
+    defaultSeverity: medium
+    hint: |
+      Functions that mutate arguments, shared collections, or long-lived
+      state in place rather than returning new values. Makes concurrency,
+      caching, and time-travel reasoning exponentially harder. Treat state
+      changes as appending new facts (immutable/persistent data structures);
+      reserve in-place mutation for substrate code or explicit perf needs.
+
+  - id: tight-api-coupling-over-data
+    name: Tight API Coupling Where Data Would Do
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, go, scala]
+    defaultSeverity: medium
+    hint: |
+      A consumer is forced to call a live API (RPC, gRPC, language-specific
+      bindings) for a payload that is naturally a document — report, event,
+      snapshot. Creates temporal, language, and mutation coupling. Prefer
+      emitting/exchanging data (JSON, Avro, XML, files, queue messages) so
+      consumers can be offline, polyglot, and free of race conditions.
+
+  - id: dsl-without-information-model
+    name: DSL Without Underlying Information Model
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, scala]
+    defaultSeverity: medium
+    hint: |
+      A string-mashing DSL (raw SQL, hand-built regex, query strings) is the
+      only way to interact with a subsystem — no programmatic information
+      model underneath. Consumers cannot inspect, compose, or transform the
+      query without parsing strings. Expose an information model first, then
+      layer an API and DSL on top of it.
+
+  - id: synchronous-direct-connection
+    name: Synchronous Direct Connection Where Queue Would Decouple
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, go, scala]
+    defaultSeverity: medium
+    hint: |
+      Producer code holds a direct reference (in-process call, sync HTTP) to
+      a consumer where the work is naturally asynchronous. Ask "what happens
+      if this connection breaks?" — if the answer is "we lose work" or "the
+      producer blocks," a queue, outbox, or event bus would decouple them.
+      Caveat: don't over-apply for genuinely synchronous request/response.
+
+  - id: gratuitous-data-wrapping
+    name: Gratuitous Data Wrapping
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, scala]
+    defaultSeverity: low
+    hint: |
+      Wrapping generic information (lists, maps, sets, plain records) in
+      bespoke classes that add no invariants or behaviour — just getters
+      around the same shape, often with the same name as the field. Doubles
+      the surface area and blocks generic tooling. Use the underlying
+      structure directly unless a real invariant needs enforcing.
+
+  - id: type-leakage-across-boundaries
+    name: Domain Types Leaking Across Subsystem Boundaries
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, scala]
+    defaultSeverity: high
+    hint: |
+      Intermediate layers are forced to import, declare, or rethrow types
+      they have no business knowing about — long `throws` lists of unrelated
+      checked exceptions, controllers importing ORM entities, transport
+      layers depending on persistence types. Each layer should expose its
+      own small set of types and translate detail into data (enums, codes,
+      structured payloads) rather than propagating foreign contracts.
+
+  - id: language-coupled-wire-format
+    name: Language-Coupled Wire Format
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, scala, python]
+    defaultSeverity: high
+    hint: |
+      Serialization that bakes in language semantics — Java/.NET binary
+      serialization, native pickle across services, RMI/CORBA-style remote
+      objects. Locks both endpoints to the same runtime, makes versioning
+      brittle, and blocks polyglot consumers. Prefer language-neutral
+      formats: JSON, Avro, Protobuf, MessagePack.
+
+  - id: example-based-test-overuse
+    name: Example-Based Tests Substituting for Coverage or Docs
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, scala, python]
+    defaultSeverity: low
+    hint: |
+      Large suites of hand-crafted unit tests that only exercise the inputs
+      the author happened to think of, often dressed up in elaborate BDD /
+      natural-language DSLs. Strong signal: many near-duplicate tests with
+      small input variations, or tests being cited where documentation or
+      code review would belong. Property-based / generative tests would
+      cover the input space far more cheaply for the same code under test.
+
+  - id: implicit-ambient-context
+    name: Implicit Ambient Context
+    languages: [typescript, typescriptreact, javascript, java, csharp, kotlin, python, scala]
+    defaultSeverity: medium
+    hint: |
+      Code that depends on hidden context — Active Record-style models that
+      "know" their connection, framework annotations that wire collaborators
+      by convention, thread-locals, request-scoped statics — instead of
+      receiving dependencies explicitly. Breaks mysteriously on upgrade,
+      hard to test in isolation, hard to reason about under concurrency.
+      Distinct from service-locator: this is about ambient state any code
+      can reach, not a lookup the caller invokes.

@@ -1,0 +1,23 @@
+schemaVersion: 1
+id: sample-anemic-domain-model
+category: anemic-domain-model
+severity: high
+status: unconfirmed
+priority: high
+location:
+  file: src/findings/schema.ts
+  line: 28
+explanation: |
+  Example finding for dogfooding the UI. The Finding type here is a pure data
+  bag — all behaviour lives in store.ts. That is intentional (serialization
+  target), but it would be a textbook anemic domain model in a real domain
+  layer.
+suggestedRemediation: |
+  In a real domain object: move invariants (e.g. valid status transitions) onto
+  the class itself rather than scattering them across services.
+detectedAt: 2026-05-21T08:55:00Z
+detectedBy: human
+confidence: 0.6
+history:
+  - timestamp: 2026-05-21T08:55:00Z
+    event: detected

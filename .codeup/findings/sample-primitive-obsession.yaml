@@ -1,0 +1,22 @@
+schemaVersion: 1
+id: sample-primitive-obsession
+category: primitive-obsession
+severity: medium
+status: unconfirmed
+priority: medium
+location:
+  file: src/findings/schema.ts
+  line: 17
+explanation: |
+  Severity, Status, and Priority are stringly-typed unions. Easy to typo,
+  hard to attach behaviour to. A nominal type or small value object would
+  give compile-time enforcement plus a place to hang formatting/ordering.
+suggestedRemediation: |
+  Introduce branded types (e.g. `type Severity = string & { __brand: 'Severity' }`)
+  with constructor functions, or full value objects if behaviour grows.
+detectedAt: 2026-05-21T08:55:00Z
+detectedBy: human
+confidence: 0.55
+history:
+  - timestamp: 2026-05-21T08:55:00Z
+    event: detected
