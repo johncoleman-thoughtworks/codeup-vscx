@@ -2,6 +2,24 @@
 
 All notable changes to Codeup are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); Codeup uses [Semantic Versioning](https://semver.org/).
 
+## 1.0.2 — 2026-05-21
+
+### Added
+
+- New catalogue entry `procedural-shell-class` — flags classes with
+  verb-as-noun suffixes (Manager / Handler / Processor / Helper /
+  Coordinator / Executor / Worker / Doer / Utility) whose body is
+  procedural code that should live on a domain object. Includes
+  explicit "do NOT report" guards for framework callback interfaces
+  (Spring HandlerInterceptor, AWS Lambda RequestHandler, JavaFX
+  EventHandler, Akka Actor), application-service classes in an
+  explicit DDD application layer, stateless CQRS dispatchers, and
+  genuine cross-aggregate orchestration. Mandatory reasoning step:
+  name the dominant entity the methods operate on; only report if the
+  behaviour would naturally live there.
+
+  Catalogue now at 92 patterns.
+
 ## 1.0.1 — 2026-05-21
 
 ### Fixed

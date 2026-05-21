@@ -551,6 +551,61 @@ patterns:
       state to avoid passing arguments through several methods. Extract a
       method object, or pass the value explicitly.
 
+  - id: procedural-shell-class
+    name: Procedural Shell Class (Manager / Handler / Processor / Helper)
+    languages: [java, kotlin, scala, csharp, typescript, typescriptreact, javascript, python, ruby]
+    defaultSeverity: medium
+    hint: |
+      A class whose NAME is essentially a verb-as-noun and whose BODY
+      is procedural code that should live on a domain object. The class
+      exists to hold behaviour that the domain class refused to absorb,
+      typically because the domain class is anemic. Reliably antithetical
+      to DDD; often introduces unnecessary complexity even outside DDD.
+
+      Name-shape signals (necessary but not sufficient):
+        - Suffix Manager / Handler / Processor / Helper / Coordinator /
+          Executor / Worker / Doer / Utility.
+        - Suffix Service when the class is in a domain-core package
+          rather than an explicit application/use-case layer.
+
+      Structural signals (need at least one for the report to be sound):
+        - Few or no instance fields representing domain state; fields
+          are mostly collaborator references (repositories, other
+          services, framework infrastructure).
+        - Methods take a domain entity as parameter and mutate it from
+          the outside, e.g. `CartManager.addProduct(cart, product)`
+          where `cart.addProduct(product)` would be natural.
+        - Static methods only — the "class" is really a namespace
+          around free functions.
+        - Methods read all the state they need from the parameter
+          rather than from the class itself.
+
+      DO NOT report when ANY of these hold (these are legitimate uses):
+        - The class implements a framework callback interface (Spring
+          HandlerInterceptor, AWS Lambda RequestHandler, JavaFX
+          EventHandler, Akka Actor, etc.) — the suffix matches the
+          framework contract.
+        - The class is annotated as an application/use-case service
+          (@Service, @UseCase, @ApplicationService) AND lives in an
+          explicit application layer that coordinates across aggregates
+          — that is the documented DDD application-service pattern.
+        - The class is a stateless dispatcher / strategy where the
+          procedural form is deliberate (e.g. a CommandHandler in a
+          CQRS architecture handling one specific command type).
+        - The class is genuinely orchestrating across multiple
+          unrelated domain objects with no natural home for the
+          behaviour on any one of them.
+
+      Mandatory reasoning step before reporting: identify the dominant
+      entity the methods operate on. Could those methods naturally live
+      on it (and would the entity then be richer rather than anemic)?
+      If yes and the class adds no orchestration value beyond
+      delegating, REPORT. Otherwise skip.
+
+      Refactor direction: move the behaviour onto the entity it
+      manipulates; reduce the class to genuine orchestration only, or
+      delete it entirely if its job was just delegation.
+
   - id: lazy-class
     name: Lazy Class
     languages: [java, kotlin, scala, csharp, typescript, typescriptreact, javascript, python]
