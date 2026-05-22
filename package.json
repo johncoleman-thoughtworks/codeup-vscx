@@ -2,7 +2,7 @@
   "name": "codeup",
   "displayName": "Codeup",
   "description": "Coding anti-pattern findings for your codebase, powered by Claude.",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "publisher": "johncoleman-thoughtworks",
   "license": "MIT",
   "repository": {
@@ -112,10 +112,16 @@
     "configuration": {
       "title": "Codeup",
       "properties": {
+        "codeup.modelProvider": {
+          "type": "string",
+          "enum": ["auto", "anthropic", "copilot"],
+          "default": "auto",
+          "description": "Which LLM provider to use. 'auto' picks Anthropic if an API key is set in SecretStorage, otherwise falls back to GitHub Copilot via the Language Model API. 'anthropic' and 'copilot' force a specific provider."
+        },
         "codeup.model": {
           "type": "string",
           "default": "claude-sonnet-4-6",
-          "description": "Anthropic model used for analysis."
+          "description": "Anthropic model used for analysis (only consulted when the active provider is Anthropic)."
         },
         "codeup.scan.onSave": {
           "type": "boolean",

@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import { Catalogue, loadCatalogue, patternsForLanguage } from '../catalogue/loader';
 import { FindingsStore } from '../findings/store';
 import { AnalysisCache } from '../analyzer/cache';
-import { AnthropicClient } from '../analyzer/client';
+import type { LLMClient } from '../analyzer/llm';
+import { ProviderFactory } from '../analyzer/providerFactory';
 import { analyzeFile, NeighborFile, MAX_NEIGHBORS } from '../analyzer/analyze';
 import { FileEntry, scanWorkspace } from '../scanner';
 import { saveGraph, saveIndex } from '../scanner/persist';
@@ -36,11 +37,15 @@ interface RootContext {
   graph: DependencyGraph;
 }
 
+interface ScanSession {
+  client: LLMClient;
+}
+
 export class ScanRunner {
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly stores: WorkspaceStores,
-    private readonly client: AnthropicClient,
+    private readonly providerFactory: ProviderFactory,
     private readonly statusBar: StatusBar,
     private readonly output: vscode.OutputChannel,
   ) {}
@@ -73,13 +78,24 @@ export class ScanRunner {
       return;
     }
 
-    const { totalChars, uncached } = this.preflight(allTargets);
+    // Resolve provider lazily — only if LLM pass will actually run.
+    let provider;
+    try {
+      provider = await this.providerFactory.resolve();
+    } catch (err) {
+      vscode.window.showErrorMessage(`Codeup: ${(err as Error).message}`);
+      return;
+    }
+    this.output.appendLine(`[scan] provider: ${provider.resolved} (${provider.reason}) — model: ${provider.client.model()}`);
+
+    const model = provider.client.model();
+    const { totalChars, uncached } = this.preflight(allTargets, model);
     const shouldPrompt =
       !opts.skipCostPrompt &&
       uncached.length > 0 &&
       (opts.scope === 'full' || (opts.scope === 'files' && uncached.length > 1));
     if (shouldPrompt) {
-      const ok = await this.confirmCost(uncached.length, totalChars);
+      const ok = await this.confirmCost(uncached.length, totalChars, provider.resolved);
       if (!ok) return;
     }
 
@@ -106,7 +122,7 @@ export class ScanRunner {
               const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(ctx.root, entry.path));
               const neighbors = await this.gatherNeighbors(ctx, entry);
               const result = await analyzeFile(
-                ctx.root, entry, bytes, ctx.catalogue, this.client, ctx.store, ctx.cache, this.output, neighbors, ctx.knowledge, token,
+                ctx.root, entry, bytes, ctx.catalogue, provider.client, ctx.store, ctx.cache, this.output, neighbors, ctx.knowledge, token,
               );
               this.output.appendLine(
                 `[scan] ${entry.path}: ${result.findings.length} finding(s)${result.fromCache ? ' (cached)' : ''}${result.skipped ? ` (skipped: ${result.skipped})` : ''}${neighbors.length > 0 ? ` [+${neighbors.length} neighbors]` : ''}`,
@@ -248,8 +264,7 @@ export class ScanRunner {
     return out;
   }
 
-  private preflight(targets: { ctx: RootContext; entry: FileEntry }[]): { totalChars: number; uncached: FileEntry[] } {
-    const model = this.client.model();
+  private preflight(targets: { ctx: RootContext; entry: FileEntry }[], model: string): { totalChars: number; uncached: FileEntry[] } {
     const uncached: FileEntry[] = [];
     let totalChars = 0;
     for (const { ctx, entry } of targets) {
@@ -268,13 +283,14 @@ export class ScanRunner {
     return { totalChars, uncached };
   }
 
-  private async confirmCost(fileCount: number, totalChars: number): Promise<boolean> {
+  private async confirmCost(fileCount: number, totalChars: number, provider: 'anthropic' | 'copilot'): Promise<boolean> {
     const inputTokens = totalChars / CHARS_PER_TOKEN;
     const outputTokens = fileCount * 500;
-    const cost =
-      (inputTokens * INPUT_COST_PER_MTOK) / 1_000_000 +
-      (outputTokens * OUTPUT_COST_PER_MTOK) / 1_000_000;
-    const msg = `Codeup: scan ${fileCount} files (~${Math.round(inputTokens).toLocaleString()} input tokens, neighbors included). Estimated cost: $${cost.toFixed(2)}. Proceed?`;
+    const costLine =
+      provider === 'anthropic'
+        ? `Estimated cost: $${(((inputTokens * INPUT_COST_PER_MTOK) + (outputTokens * OUTPUT_COST_PER_MTOK)) / 1_000_000).toFixed(2)}.`
+        : `Uses ~${fileCount} requests of your Copilot quota.`;
+    const msg = `Codeup: scan ${fileCount} files via ${provider} (~${Math.round(inputTokens).toLocaleString()} input tokens, neighbors included). ${costLine} Proceed?`;
     const pick = await vscode.window.showWarningMessage(msg, { modal: true }, 'Proceed');
     return pick === 'Proceed';
   }

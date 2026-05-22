@@ -1,10 +1,9 @@
 import * as vscode from 'vscode';
 import * as yaml from 'js-yaml';
 import type Anthropic from '@anthropic-ai/sdk';
-import { AnthropicClient } from '../analyzer/client';
+import type { LLMClient } from '../analyzer/llm';
 import type { DependencyGraph } from '../scanner/graph';
 import type { ProjectIndex } from '../scanner';
-import { abortSignalFor } from '../util/abort';
 import type { IntentConfig, LayerRule } from './layers';
 import { formatForPrompt, summarize } from './sampler';
 
@@ -46,38 +45,32 @@ export interface SuggestionResult {
 export async function suggestIntent(
   index: ProjectIndex,
   graph: DependencyGraph,
-  client: AnthropicClient,
+  client: LLMClient,
   token?: vscode.CancellationToken,
 ): Promise<SuggestionResult> {
   const summary = summarize(index, graph);
   const userPrompt = formatForPrompt(summary);
 
-  const anthropic = await client.ensure();
-  const abort = token ? abortSignalFor(token) : undefined;
-  try {
-    const response = await anthropic.messages.create(
-      {
-        model: client.model(),
-        max_tokens: 1500,
-        system: buildSystemPrompt(),
-        tools: [PROPOSE_LAYER_RULES_TOOL],
-        messages: [{ role: 'user', content: userPrompt }],
-      },
-      abort ? { signal: abort.signal } : undefined,
-    );
+  const response = await client.analyze({
+    systemPrompt: buildSystemPrompt(),
+    userPrompt,
+    tool: {
+      name: PROPOSE_LAYER_RULES_TOOL.name,
+      description: PROPOSE_LAYER_RULES_TOOL.description ?? '',
+      input_schema: PROPOSE_LAYER_RULES_TOOL.input_schema as unknown as Record<string, unknown>,
+    },
+    maxOutputTokens: 1500,
+    token,
+  });
 
-    for (const block of response.content) {
-      if (block.type === 'tool_use' && block.name === 'propose_layer_rules') {
-        const input = block.input as { layers?: LayerRule[]; notes?: string };
-        const layers = (input.layers ?? []).filter(isValidLayer);
-        const intent: IntentConfig = { layers };
-        return { intent, notes: input.notes, yaml: renderYaml(intent, input.notes) };
-      }
-    }
-    throw new Error('Claude did not call the propose_layer_rules tool');
-  } finally {
-    abort?.dispose();
+  for (const call of response.toolCalls) {
+    if (call.name !== 'propose_layer_rules') continue;
+    const input = call.input as { layers?: LayerRule[]; notes?: string };
+    const layers = (input.layers ?? []).filter(isValidLayer);
+    const intent: IntentConfig = { layers };
+    return { intent, notes: input.notes, yaml: renderYaml(intent, input.notes) };
   }
+  throw new Error('Model did not call the propose_layer_rules tool');
 }
 
 function buildSystemPrompt(): string {

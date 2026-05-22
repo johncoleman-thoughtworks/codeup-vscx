@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { AnthropicClient } from './analyzer/client';
+import { ProviderFactory } from './analyzer/providerFactory';
 import { DecorationManager } from './decorations';
 import { DetailsView } from './detailsView';
 import { FindingsProvider } from './findingsProvider';
@@ -21,8 +22,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const details = new DetailsView(context, stores);
   const decorations = new DecorationManager(stores);
   const statusBar = new StatusBar(stores);
-  const client = new AnthropicClient(context);
-  const runner = new ScanRunner(context, stores, client, statusBar, output);
+  const client = new AnthropicClient(context); // kept for the api-key commands + intent suggester
+  const providerFactory = new ProviderFactory(context);
+  const runner = new ScanRunner(context, stores, providerFactory, statusBar, output);
 
   context.subscriptions.push(
     output,
@@ -117,7 +119,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             const index = await scanWorkspace(root, token);
             if (token.isCancellationRequested) return;
             const graph = buildGraph(index);
-            const result = await suggestIntent(index, graph, client, token);
+            const provider = await providerFactory.resolve();
+            output.appendLine(`[intent] provider: ${provider.resolved} (${provider.reason})`);
+            const result = await suggestIntent(index, graph, provider.client, token);
             if (token.isCancellationRequested) return;
 
             const target = vscode.Uri.joinPath(root, '.codeup/intent.yaml');

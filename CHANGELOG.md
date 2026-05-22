@@ -2,6 +2,47 @@
 
 All notable changes to Codeup are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); Codeup uses [Semantic Versioning](https://semver.org/).
 
+## 1.1.0 — 2026-05-22
+
+### Added
+
+- **GitHub Copilot as a model provider.** Codeup can now route through
+  VS Code's Language Model API (`vscode.lm`) using a Copilot
+  subscription instead of a direct Anthropic API key. Useful for
+  client engagements where Copilot is already procured and approved
+  but an Anthropic account is not. No API key needed; first run
+  prompts once for VS Code permission to use the language model.
+- New `codeup.modelProvider` setting: `"auto"` (default — Anthropic
+  if a key is set, falls back to Copilot), `"anthropic"`, or
+  `"copilot"`.
+- Active provider + model + selection reason are logged to the
+  Codeup output channel at the start of every scan.
+- Cost-prompt modal is now provider-aware — shows a dollar estimate
+  for Anthropic, a Copilot-quota estimate for Copilot.
+
+### Internal
+
+- New `LLMClient` interface abstracts the analyzer's LLM call.
+  `AnthropicClient` (existing) and `VSCodeLMClient` (new) both
+  implement it. `ProviderFactory` resolves the right one based on
+  the setting and credential availability.
+- `analyzer/analyze.ts`, `scan/runner.ts`, and `intent/suggest.ts`
+  all switched from concrete `AnthropicClient` to the `LLMClient`
+  interface. No detection-quality change for existing Anthropic users.
+
+### Caveats
+
+- **The Copilot path is new in 1.1.0 and has not been verified
+  end-to-end on a real codebase yet.** Tool-use round-trips through
+  GitHub's proxy *should* work — the wiring is straightforward — but
+  some catalogue patterns may degrade vs Anthropic direct if the
+  proxy reshapes tool-call schemas. File an issue if you see this;
+  expect a 1.1.x patch tightening the path against real-world results.
+- Organisational policy can disable third-party extension access to
+  the Language Model API. If that's set, the Copilot path is closed
+  without an admin change — Codeup's error message points to this as
+  the likely cause.
+
 ## 1.0.5 — 2026-05-22
 
 ### Added

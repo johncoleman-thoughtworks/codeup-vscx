@@ -20,9 +20,27 @@ See [`resources/catalogue/default.yaml`](resources/catalogue/default.yaml) for t
 
 ## Setup
 
-1. **Install** — `npm install && npm run compile` (or grab the packaged `.vsix` from a release).
-2. **Set your Anthropic API key** — Command Palette → `Codeup: Set Anthropic API Key`. Stored in VS Code's `SecretStorage` (macOS Keychain / Windows DPAPI / Linux libsecret) — never in `settings.json` or in your repo.
+1. **Install** — grab the packaged `.vsix` from a [release](https://github.com/johncoleman-thoughtworks/codeup-vscx/releases) and install via `code --install-extension <file>.vsix`, or build from source with `npm install && npm run compile`.
+2. **Pick a model provider** — Codeup supports two:
+   - **Anthropic direct** (default — set an API key via `Codeup: Set Anthropic API Key`)
+   - **GitHub Copilot** via VS Code's Language Model API (no API key needed, uses your existing Copilot subscription)
+
+   See [Choosing a provider](#choosing-a-provider) below.
 3. **Open a workspace** and click the `{^}` icon in the activity bar.
+
+## Choosing a provider
+
+Codeup's `codeup.modelProvider` setting picks how it reaches a Claude model:
+
+| Value | Behaviour |
+|---|---|
+| `auto` *(default)* | Use Anthropic if an API key is stored in `SecretStorage`; otherwise fall back to GitHub Copilot via the Language Model API. The active provider is always logged to the Codeup output channel. |
+| `anthropic` | Force direct Anthropic API. Prompts for an API key on first use. |
+| `copilot` | Force GitHub Copilot via `vscode.lm`. Uses your Copilot subscription; prompts once for permission. |
+
+**Anthropic direct** — `Codeup: Set Anthropic API Key`. Stored in VS Code's `SecretStorage` (macOS Keychain / Windows DPAPI / Linux libsecret) — never in `settings.json` or in your repo. Per-token billing, predictable cost per scan, full visibility in the cost modal.
+
+**GitHub Copilot** — no key required. If you're signed in to Copilot in VS Code, Codeup can route through GitHub's proxy to whichever Claude family Copilot exposes (`claude-sonnet-4`, `claude-3.5-sonnet`, etc.). The first scan triggers a one-click VS Code consent prompt. Tick-down is on your Copilot quota rather than a separate Anthropic bill. **Caveat: this path is new in 1.1.0 and the tool-use fidelity through GitHub's proxy has not yet been verified on real codebases — if some catalogue patterns degrade vs Anthropic direct, please file an issue.** Some organisations disable extension access to the Language Model API; if `selectChatModels` returns empty, that's the likely cause.
 
 ## Daily flow
 
@@ -103,9 +121,12 @@ All commands are available from the Command Palette (`⇧⌘P` / `Ctrl+Shift+P`)
 
 | Setting | Default | Description |
 |---|---|---|
-| `codeup.model` | `claude-sonnet-4-6` | Anthropic model used for analysis. |
+| `codeup.modelProvider` | `auto` | `auto` / `anthropic` / `copilot`. See [Choosing a provider](#choosing-a-provider). |
+| `codeup.model` | `claude-sonnet-4-6` | Anthropic model used for analysis (only consulted when the active provider is Anthropic). |
 | `codeup.scan.onSave` | `false` | Run incremental scans on file save. |
 | `codeup.findingsDir` | `.codeup/findings` | Where findings YAML files live (workspace-relative). |
+| `codeup.fileSize.warnBytes` | `30000` | File size threshold for medium-severity `oversized-file` findings. |
+| `codeup.fileSize.criticalBytes` | `60000` | File size threshold for high-severity `oversized-file` findings (matches the analyzer's character cap). |
 
 ## Optional: `.codeup/intent.yaml`
 
