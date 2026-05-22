@@ -168,12 +168,15 @@ Each root keeps its own `.codeup/` on disk (state travels with each project's re
 
 ```bash
 npm install
-npm run compile         # tsc
-npm test                # 74 unit tests via node:test
-npm run test:integration # @vscode/test-electron (first run downloads VS Code)
+npm run compile           # tsc
+npm test                  # 82 unit tests via node:test
+npm run test:integration  # @vscode/test-electron (first run downloads VS Code)
+npm run security:check    # npm audit + lockfile integrity (also runs automatically before vsce package)
 ```
 
 Press `F5` in this folder to launch the Extension Development Host with the extension loaded.
+
+See [SECURITY.md](SECURITY.md) for the supply-chain policy and how the build gates work.
 
 See [PLAN.md](PLAN.md) for the implementation roadmap and [TESTING.md](TESTING.md) for the testing strategy.
 

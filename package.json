@@ -147,7 +147,10 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run security:check && npm run compile",
+    "security:check": "npm run security:audit && npm run security:lockfile",
+    "security:audit": "npm audit --omit=dev --audit-level=high",
+    "security:lockfile": "npm ci --omit=dev --dry-run --ignore-scripts >/dev/null && echo 'lockfile integrity ✓'",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
