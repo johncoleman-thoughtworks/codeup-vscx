@@ -2,6 +2,29 @@
 
 All notable changes to Codeup are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); Codeup uses [Semantic Versioning](https://semver.org/).
 
+## 1.2.1 — 2026-05-22
+
+### Fixed
+
+- **Scanner no longer flags lock files and data files as oversized.**
+  Generated dependency lock files (`Cargo.lock`, `package-lock.json`,
+  `yarn.lock`, `pnpm-lock.yaml`, `bun.lockb`, `Pipfile.lock`,
+  `poetry.lock`, `uv.lock`, `Gemfile.lock`, `composer.lock`,
+  `go.sum`, `mix.lock`, `Podfile.lock`, `packages.lock.json`,
+  `npm-shrinkwrap.json`) are now skipped by the workspace walker.
+  The `oversized-file` check additionally ignores data formats
+  (YAML / JSON / TOML), docs (Markdown), and plain text / HTML /
+  CSS / SCSS / SQL — these regularly cross the warn threshold for
+  legitimate reasons (catalogues, schemas, fixtures) and the
+  findings were noise rather than signal.
+
+### Notes
+
+- Behaviourally aligned with `codeup-cli` (the Rust scanner that
+  produces the same `.codeup/findings/*.yaml` shape), so the
+  CLI and the extension report identical findings for the same
+  project.
+
 ## 1.2.0 — 2026-05-22
 
 ### Added

@@ -2,7 +2,7 @@
   "name": "codeup",
   "displayName": "Codeup",
   "description": "Coding anti-pattern findings for your codebase, powered by Claude.",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "publisher": "johncoleman-thoughtworks",
   "license": "MIT",
   "repository": {
