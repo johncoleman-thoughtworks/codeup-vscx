@@ -2,6 +2,25 @@
 
 All notable changes to Codeup are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); Codeup uses [Semantic Versioning](https://semver.org/).
 
+## 1.0.5 — 2026-05-22
+
+### Added
+
+- New catalogue entry `oversized-file` — deterministic check (no LLM)
+  flagging files past a configurable size threshold. Medium severity at
+  the warn level (default 30,000 bytes — navigation, review, merge
+  surface area suffer); high severity at the critical level (default
+  60,000 bytes, matching the analyzer's character cap — files beyond
+  this are silently skipped by the LLM pass, and now the size itself
+  surfaces as the finding). Makes Codeup's own analysis limits visible
+  as code quality signals rather than hidden behaviour.
+- Two new settings: `codeup.fileSize.warnBytes` and
+  `codeup.fileSize.criticalBytes` for tuning the thresholds.
+
+Catalogue now at 96 patterns; 4 are deterministic (`cyclic-dependency`,
+`layer-violation`, `oversized-file`, plus `cyclic-dependency-risk` LLM
+hint).
+
 ## 1.0.4 — 2026-05-22
 
 ### Added

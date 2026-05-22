@@ -10,6 +10,21 @@ patterns:
       module dependency graph — two or more files that transitively import
       each other. Detected by codeup-deterministic.
 
+  - id: oversized-file
+    name: Oversized File
+    languages: [typescript, typescriptreact, javascript, javascriptreact, java, kotlin, scala, csharp, python, ruby, go, rust]
+    defaultSeverity: medium
+    hint: |
+      Deterministic check (no LLM). File size in bytes is past a configured
+      threshold. Medium severity at the warn threshold — large enough that
+      navigation, code review, and merge-conflict surface area all suffer.
+      High severity at the critical threshold — beyond Codeup's own
+      analysis cap, so the deep LLM scan was skipped for this file; the
+      size itself becomes the finding. Thresholds are configurable via
+      `codeup.fileSize.warnBytes` (default 30,000) and
+      `codeup.fileSize.criticalBytes` (default 60,000, tied to the
+      analyzer's character limit). Detected by codeup-deterministic.
+
   - id: layer-violation
     name: Layer Boundary Violation
     languages: [java, kotlin, scala, typescript, typescriptreact, javascript, javascriptreact, python, go]

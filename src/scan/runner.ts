@@ -9,6 +9,7 @@ import { saveGraph, saveIndex } from '../scanner/persist';
 import { buildGraph, DependencyGraph, findCycles, neighborsOf } from '../scanner/graph';
 import { cycleFindings, layerViolations } from '../intent/check';
 import { loadIntent } from '../intent/loader';
+import { DEFAULT_SIZE_OPTIONS, oversizedFiles } from '../quality/sizeCheck';
 import { KnowledgeStore } from '../knowledge/store';
 import { StatusBar } from '../statusBar';
 import { yieldToEventLoop } from '../util/abort';
@@ -170,8 +171,15 @@ export class ScanRunner {
     if (intent) {
       for (const f of layerViolations(graph, intent)) await store.upsertFromAnalysis(f);
     }
-    if (cycles.length > 0 || intent) {
-      this.output.appendLine(`[scan] ${rootLabel(root)}: deterministic ${cycles.length} cycle(s)${intent ? ', layer rules applied' : ''}`);
+    const cfg = vscode.workspace.getConfiguration('codeup');
+    const sizeOpts = {
+      warnBytes: cfg.get<number>('fileSize.warnBytes', DEFAULT_SIZE_OPTIONS.warnBytes),
+      criticalBytes: cfg.get<number>('fileSize.criticalBytes', DEFAULT_SIZE_OPTIONS.criticalBytes),
+    };
+    const oversized = oversizedFiles(index, sizeOpts);
+    for (const f of oversized) await store.upsertFromAnalysis(f);
+    if (cycles.length > 0 || intent || oversized.length > 0) {
+      this.output.appendLine(`[scan] ${rootLabel(root)}: deterministic ${cycles.length} cycle(s)${intent ? ', layer rules applied' : ''}${oversized.length > 0 ? `, ${oversized.length} oversized file(s)` : ''}`);
     }
 
     return { root, store, knowledge, catalogue, cache, index, graph };

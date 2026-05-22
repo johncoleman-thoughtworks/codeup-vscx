@@ -2,7 +2,7 @@
   "name": "codeup",
   "displayName": "Codeup",
   "description": "Coding anti-pattern findings for your codebase, powered by Claude.",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "publisher": "johncoleman-thoughtworks",
   "license": "MIT",
   "repository": {
@@ -126,6 +126,16 @@
           "type": "string",
           "default": ".codeup/findings",
           "description": "Directory (relative to workspace root) where findings are stored."
+        },
+        "codeup.fileSize.warnBytes": {
+          "type": "number",
+          "default": 30000,
+          "description": "File size in bytes at or above which an oversized-file finding is emitted at medium severity."
+        },
+        "codeup.fileSize.criticalBytes": {
+          "type": "number",
+          "default": 60000,
+          "description": "File size in bytes at or above which an oversized-file finding is emitted at high severity. Should match the analyzer's character cap so files skipped by the LLM pass are flagged."
         }
       }
     }
