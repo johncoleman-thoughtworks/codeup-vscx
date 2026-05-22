@@ -2,7 +2,7 @@
   "name": "codeup",
   "displayName": "Codeup",
   "description": "Coding anti-pattern findings for your codebase, powered by Claude.",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "publisher": "johncoleman-thoughtworks",
   "license": "MIT",
   "repository": {
@@ -27,6 +27,7 @@
     "sarif"
   ],
   "main": "./dist/extension.js",
+  "icon": "resources/codeup-marketplace.png",
   "activationEvents": [
     "onStartupFinished"
   ],

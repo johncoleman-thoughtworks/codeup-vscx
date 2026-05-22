@@ -34,6 +34,30 @@ See [`resources/catalogue/default.yaml`](resources/catalogue/default.yaml) for t
    - **Mark Fixed** once you've made the change.
 3. **Rescan** — unchanged files come from cache (no API cost). Changed files re-analyze.
 
+## Data handling — please read before scanning client code
+
+Codeup sends source code to the Anthropic API when it runs the LLM-driven catalogue. **For the avoidance of doubt:** if you point Codeup at a client repository, source from that repository will leave your machine. You are responsible for confirming that this is acceptable under any NDA or data-handling agreement that applies.
+
+**What gets sent over HTTPS to `api.anthropic.com`:**
+
+- The full text of any file Codeup analyzes (verbatim, between code fences).
+- Up to 6 *neighbor* files per analyzed file (importers, imported modules, and same-package siblings), each truncated to 8,000 characters.
+- The text of any team-authored dismissal rationales and exemplar explanations retrieved from `.codeup/knowledge/` as context for the current analysis.
+- Pattern hints from the catalogue and the analyzer's system prompt.
+
+**What never gets sent:**
+
+- Files excluded by your `.gitignore` or the scanner's default excludes (`node_modules`, `.git`, `dist`, `build`, `target`, `.codeup/` itself, etc.).
+- Files over 512 KB on disk or over 60,000 characters at analysis time.
+- Files in a language that has no matching catalogue patterns.
+- Files whose contents are unchanged since the last scan (cache hit — zero API calls).
+- The deterministic findings (`cyclic-dependency`, `layer-violation`) — graph-only, no API call ever.
+- Your `.codeup/findings/` records, your `.codeup/cache/`, or your API key (used in the auth header, never as content).
+
+**Anthropic's terms** (commercial API use): inputs and outputs are not used to train models. Retention is for abuse detection and bounded by Anthropic's data retention policy. Customers with stricter requirements can request Zero Data Retention agreements; deployment via AWS Bedrock or GCP Vertex is also an option for keeping requests inside a customer-controlled cloud (would require a small adapter — not yet built into Codeup).
+
+**If you cannot send client source off the machine**, you can still get value from Codeup's deterministic checks (cycles, layer violations) without any API call. A `codeup.scan.deterministicOnly` setting that disables the LLM pass entirely is a planned addition — open an issue if you need it before then.
+
 ## What's stored in `.codeup/`
 
 Codeup writes everything under `.codeup/` in your workspace root (per-root in multi-root setups).

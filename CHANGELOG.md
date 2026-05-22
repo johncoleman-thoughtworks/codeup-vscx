@@ -2,6 +2,32 @@
 
 All notable changes to Codeup are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); Codeup uses [Semantic Versioning](https://semver.org/).
 
+## 1.0.4 — 2026-05-22
+
+### Added
+
+- Marketplace icon (`resources/codeup-marketplace.png`) — 128×128
+  rounded-square with the `{^}` glyph in white on VS Code blue. Set as
+  `icon` in `package.json` so the Extensions sidebar / .vsix install
+  page no longer shows the generic placeholder.
+
+### Fixed
+
+- Activity-bar `{^}` glyph re-spaced to match the marketplace icon's
+  proportions. Previous version's compression at activity-bar render
+  size made the braces and caret crowd each other.
+
+### Docs
+
+- README now includes a **Data handling** section spelling out what
+  Codeup sends to the Anthropic API (full file text + neighbor files
+  + knowledge entries) and what it does not (gitignored files,
+  oversize files, cache-hit files, deterministic findings). Includes
+  guidance for client-confidential code: Zero Data Retention with
+  Anthropic, Bedrock / Vertex routing as future options, or
+  deterministic-only mode (planned `codeup.scan.deterministicOnly`
+  setting).
+
 ## 1.0.3 — 2026-05-21
 
 ### Added

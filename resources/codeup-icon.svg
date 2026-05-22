@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <!-- Left brace: { -->
-  <path d="M7 4 C4 4 4 7 4 9 C4 11 3 12 2 12 C3 12 4 13 4 15 C4 17 4 20 7 20" />
+  <path d="M8 4 C5 4 5 7 5 9 C5 11 4 12 3 12 C4 12 5 13 5 15 C5 17 5 20 8 20" />
   <!-- Right brace: } -->
-  <path d="M17 4 C20 4 20 7 20 9 C20 11 21 12 22 12 C21 12 20 13 20 15 C20 17 20 20 17 20" />
+  <path d="M16 4 C19 4 19 7 19 9 C19 11 20 12 21 12 C20 12 19 13 19 15 C19 17 19 20 16 20" />
   <!-- Caret: ^ -->
-  <polyline points="8 13 12 9 16 13" />
+  <polyline points="7 13 12 9 17 13" />
 </svg>
