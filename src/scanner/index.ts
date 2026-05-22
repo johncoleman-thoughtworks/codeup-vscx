@@ -79,6 +79,24 @@ const DEFAULT_EXCLUDES = [
   '*.user',
   // Codeup itself — never analyze its own state
   '.codeup',
+  // Generated dependency lock files. Always committed, often huge,
+  // never meaningfully analyzable as source — flagging them as
+  // oversized just spams the report. Mirrors codeup-cli's default set.
+  'Cargo.lock',
+  'package-lock.json',
+  'yarn.lock',
+  'pnpm-lock.yaml',
+  'npm-shrinkwrap.json',
+  'bun.lockb',
+  'Pipfile.lock',
+  'poetry.lock',
+  'uv.lock',
+  'Gemfile.lock',
+  'composer.lock',
+  'go.sum',
+  'mix.lock',
+  'Podfile.lock',
+  'packages.lock.json',
 ];
 
 const MAX_FILE_BYTES = 512 * 1024; // skip files larger than 512 KB for now

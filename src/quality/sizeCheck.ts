@@ -24,10 +24,21 @@ export const DEFAULT_SIZE_OPTIONS: SizeCheckOptions = {
   criticalBytes: 60_000,
 };
 
+// Languages that map to "actual source code" — the only files for
+// which oversized-file is meaningful signal. Data formats (yaml / json /
+// toml), docs (markdown), and plain text all routinely exceed the warn
+// threshold for legitimate reasons (catalogues, schemas, fixtures) and
+// flagging them just adds noise to the report. Mirrors the equivalent
+// gate in codeup-cli's quality module.
+const NON_SOURCE_LANGUAGES = new Set([
+  'yaml', 'json', 'toml', 'markdown', 'plaintext', 'html', 'css', 'scss', 'sql',
+]);
+
 export function oversizedFiles(index: ProjectIndex, options: SizeCheckOptions = DEFAULT_SIZE_OPTIONS): Finding[] {
   const findings: Finding[] = [];
   for (const file of index.files) {
     if (file.size < options.warnBytes) continue;
+    if (NON_SOURCE_LANGUAGES.has(file.language)) continue;
     const isCritical = file.size >= options.criticalBytes;
     const severity: Finding['severity'] = isCritical ? 'high' : 'medium';
     const id = stableId('oversized-file', file.path);

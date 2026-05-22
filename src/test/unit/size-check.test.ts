@@ -3,8 +3,8 @@ import { test } from 'node:test';
 import type { FileEntry, ProjectIndex } from '../../scanner';
 import { DEFAULT_SIZE_OPTIONS, oversizedFiles } from '../../quality/sizeCheck';
 
-function entry(path: string, size: number): FileEntry {
-  return { path, language: 'typescript', size, contentHash: 'h_' + path, mtime: 0, rawImports: [] };
+function entry(path: string, size: number, language: string = 'typescript'): FileEntry {
+  return { path, language, size, contentHash: 'h_' + path, mtime: 0, rawImports: [] };
 }
 
 function index(files: FileEntry[]): ProjectIndex {
@@ -67,4 +67,20 @@ test('oversizedFiles: detector is codeup-deterministic', () => {
 test('oversizedFiles: default options match DEFAULT_SIZE_OPTIONS', () => {
   assert.equal(DEFAULT_SIZE_OPTIONS.warnBytes, 30_000);
   assert.equal(DEFAULT_SIZE_OPTIONS.criticalBytes, 60_000);
+});
+
+test('oversizedFiles: skips non-source languages (data files, docs)', () => {
+  // Large catalogue YAMLs / JSON schemas / markdown docs routinely cross
+  // the warn threshold for legitimate reasons. They should not produce
+  // findings — oversized-file is only meaningful for actual source.
+  const idx = index([
+    entry('catalogue.yaml', 80_000, 'yaml'),
+    entry('schema.json', 80_000, 'json'),
+    entry('Cargo.toml.snapshot', 80_000, 'toml'),
+    entry('README.md', 80_000, 'markdown'),
+    entry('big.ts', 80_000, 'typescript'),
+  ]);
+  const findings = oversizedFiles(idx);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].location.file, 'big.ts');
 });
