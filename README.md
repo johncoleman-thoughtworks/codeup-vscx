@@ -116,6 +116,7 @@ All commands are available from the Command Palette (`⇧⌘P` / `Ctrl+Shift+P`)
 | `Codeup: Group Findings by Severity / Category / Status` | Switch the tree's grouping. |
 | `Codeup: Set Anthropic API Key` | Store / replace the API key in `SecretStorage`. |
 | `Codeup: Clear Anthropic API Key` | Forget the stored key. |
+| `Codeup: Check for Updates` | Check GitHub Releases for a newer Codeup version. Auto-runs on activation (throttled to once per 24h); this command forces an immediate check. |
 
 ## Settings
 

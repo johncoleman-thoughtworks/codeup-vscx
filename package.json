@@ -2,7 +2,7 @@
   "name": "codeup",
   "displayName": "Codeup",
   "description": "Coding anti-pattern findings for your codebase, powered by Claude.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "publisher": "johncoleman-thoughtworks",
   "license": "MIT",
   "repository": {
@@ -98,6 +98,10 @@
       {
         "command": "codeup.intent.suggest",
         "title": "Codeup: Suggest Architectural Intent"
+      },
+      {
+        "command": "codeup.updateCheck.now",
+        "title": "Codeup: Check for Updates"
       }
     ],
     "menus": {
@@ -142,6 +146,16 @@
           "type": "number",
           "default": 60000,
           "description": "File size in bytes at or above which an oversized-file finding is emitted at high severity. Should match the analyzer's character cap so files skipped by the LLM pass are flagged."
+        },
+        "codeup.updateCheck.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check GitHub Releases for newer Codeup versions on activation. When a newer version is found, shows a notification with an option to download and install the .vsix. Set to false to disable the check entirely (no network call)."
+        },
+        "codeup.updateCheck.intervalHours": {
+          "type": "number",
+          "default": 24,
+          "description": "Minimum hours between update checks. Subsequent activations within this window skip the network call."
         }
       }
     }

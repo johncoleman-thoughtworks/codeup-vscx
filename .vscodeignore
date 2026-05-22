@@ -7,11 +7,13 @@ tsconfig.json
 # Dev-only state
 .vscode/**
 .vscode-test/**
+.github/**
 .gitignore
 .codeup/**
 .idea/**
 .claude/**
 codeup.iml
+SECURITY.md
 
 # Test artifacts
 dist/test/**

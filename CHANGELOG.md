@@ -2,6 +2,36 @@
 
 All notable changes to Codeup are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); Codeup uses [Semantic Versioning](https://semver.org/).
 
+## 1.2.0 — 2026-05-22
+
+### Added
+
+- **Update check.** Since Codeup is distributed as a `.vsix` (not via
+  the VS Code Marketplace), users had no way to know when a new
+  version shipped. On activation Codeup now checks GitHub Releases
+  for a newer tag — throttled to once every 24 hours by default —
+  and shows a notification when one is available:
+  - **Install now** — downloads the `.vsix` and invokes
+    `workbench.extensions.installExtension`. Falls back to
+    instructions if VS Code declines.
+  - **View release** — opens the release page in your browser.
+  - **Later** — dismisses *this specific version* until a newer
+    release ships.
+- New command `Codeup: Check for Updates` runs the check on demand.
+- Settings:
+  - `codeup.updateCheck.enabled` (default `true`) — kill switch for
+    the network call.
+  - `codeup.updateCheck.intervalHours` (default `24`) — minimum
+    hours between automatic checks.
+
+### Privacy
+
+The update check makes one HTTPS request to
+`api.github.com/repos/johncoleman-thoughtworks/codeup-vscx/releases/latest`
+per interval. No identifying information beyond the standard
+`User-Agent: codeup-vscode-extension` header. Disable via
+`codeup.updateCheck.enabled = false`.
+
 ## 1.1.0 — 2026-05-22
 
 ### Added

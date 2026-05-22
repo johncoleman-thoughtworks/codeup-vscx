@@ -10,6 +10,7 @@ import { scanWorkspace } from './scanner';
 import { buildGraph } from './scanner/graph';
 import { StatusBar } from './statusBar';
 import { clearApiKey, getApiKey } from './util/apiKey';
+import { UpdateChecker } from './util/updateCheck';
 import { WorkspaceStores } from './workspaceStores';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -25,6 +26,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const client = new AnthropicClient(context); // kept for the api-key commands + intent suggester
   const providerFactory = new ProviderFactory(context);
   const runner = new ScanRunner(context, stores, providerFactory, statusBar, output);
+  const updateChecker = new UpdateChecker(context, context.extension.packageJSON.version as string, output);
+
+  // Fire-and-forget; checkOnActivation is throttled + silent on failure.
+  void updateChecker.checkOnActivation();
 
   context.subscriptions.push(
     output,
@@ -91,6 +96,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       client.reset();
       vscode.window.showInformationMessage('Codeup: API key cleared.');
     }),
+
+    vscode.commands.registerCommand('codeup.updateCheck.now', () => updateChecker.checkNow()),
 
     vscode.commands.registerCommand('codeup.intent.suggest', async () => {
       const roots = stores.roots;
