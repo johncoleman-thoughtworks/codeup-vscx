@@ -1,0 +1,45 @@
+version: 2
+updates:
+  # npm dependencies (production + dev)
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 5
+    groups:
+      # Roll all VS Code typings + tooling into one PR to keep noise down
+      vscode-tooling:
+        patterns:
+          - "@types/vscode"
+          - "@vscode/*"
+      # Group all small JS-ecosystem primitives together — bumping one
+      # individually is rarely worth a PR
+      utility-deps:
+        patterns:
+          - "@types/*"
+          - "typescript"
+          - "mocha"
+          - "glob"
+    commit-message:
+      prefix: "chore(deps)"
+      include: scope
+    labels:
+      - dependencies
+
+  # GitHub Actions used in workflows (none yet, but cheap to enable)
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: "Etc/UTC"
+    commit-message:
+      prefix: "chore(actions)"
+      include: scope
+    labels:
+      - dependencies
+      - github-actions
