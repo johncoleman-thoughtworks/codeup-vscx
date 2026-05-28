@@ -180,13 +180,13 @@
     "@types/glob": "^8.1.0",
     "@types/js-yaml": "^4.0.9",
     "@types/mocha": "^10.0.6",
-    "@types/node": "^20.11.0",
+    "@types/node": "^25.9.1",
     "@types/vscode": "^1.90.0",
     "@vscode/test-electron": "^2.4.0",
     "@vscode/vsce": "^3.2.0",
-    "glob": "^10.3.10",
-    "mocha": "^10.4.0",
-    "typescript": "^5.4.0"
+    "glob": "^13.0.6",
+    "mocha": "^11.7.6",
+    "typescript": "^6.0.3"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
