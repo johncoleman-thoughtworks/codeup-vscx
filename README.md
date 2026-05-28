@@ -6,7 +6,7 @@ Findings are persisted as files under `.codeup/` so they travel with the repo an
 
 ## What it detects
 
-95 catalogued patterns spanning:
+107 catalogued patterns spanning:
 
 - **Single-file smells** — god class, anemic domain model, long methods, primitive obsession, deep nesting, high cognitive complexity, error swallowing, function-name mismatches, etc.
 - **Inheritance & OO shape** — non-exclusive subtypes (roles modelled as inheritance), procedural shell classes (Manager / Handler / Processor), base classes that depend on their subclasses, parallel inheritance hierarchies.
@@ -14,6 +14,8 @@ Findings are persisted as files under `.codeup/` so they travel with the repo an
 - **Module dependency** — deterministic cyclic-dependency detection (Tarjan SCC), layer-boundary violations driven by an optional `.codeup/intent.yaml`.
 - **Service-level** — distributed monolith indicators, shared-database, reach-through reads, god service.
 - **Data / persistence** — N+1 queries, lost updates, cache-as-source-of-truth, EAV overuse, god tables.
+- **Exception handling** — overbroad catches, lossy translation, exceptions as validation, log-and-rethrow cargo cult, slow-fail / over-recovery.
+- **Code security (10 patterns)** — untrusted input in interpreting contexts, resource-locator path traversal, lower-trust config overriding security decisions, external artifacts installed without integrity verification, unsafe deserialization, inconsistent validation across ingress paths, trust-following filesystem operations, persisted state treated as authoritative, credentials scoped to identity rather than destination, untrusted input that can terminate a shared process.
 - **Process / judgement** — premature optimisation/abstraction, copy-paste programming, golden hammer, lava flow.
 
 See [`resources/catalogue/default.yaml`](resources/catalogue/default.yaml) for the full list.
