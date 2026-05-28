@@ -189,7 +189,7 @@
     "typescript": "^5.4.0"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.30.0",
+    "@anthropic-ai/sdk": "^0.98.0",
     "ignore": "^5.3.1",
     "js-yaml": "^4.1.0",
     "minimatch": "^9.0.4"
