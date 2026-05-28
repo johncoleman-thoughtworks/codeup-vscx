@@ -2,6 +2,7 @@ import * as crypto from 'crypto';
 import ignore, { Ignore } from 'ignore';
 import * as vscode from 'vscode';
 import { extractImports } from './imports';
+import { parseIgnoreText } from './ignoreLoader';
 
 export interface FileEntry {
   path: string;            // workspace-relative, POSIX separators
@@ -101,12 +102,24 @@ const DEFAULT_EXCLUDES = [
 
 const MAX_FILE_BYTES = 512 * 1024; // skip files larger than 512 KB for now
 
+interface IgnoreStack {
+  /** Non-user-overridable always-skips (.git, node_modules, .codeup, …). */
+  defaults: Ignore;
+  /** Patterns from every .gitignore discovered during the walk. */
+  gitIg: Ignore;
+  /** Patterns from every .codeupignore discovered during the walk. */
+  codeupIg: Ignore;
+}
+
 export async function scanWorkspace(root: vscode.Uri, token?: vscode.CancellationToken): Promise<ProjectIndex> {
-  const ig = await loadGitignore(root);
-  for (const e of DEFAULT_EXCLUDES) ig.add(e);
+  const stack: IgnoreStack = {
+    defaults: ignore().add(DEFAULT_EXCLUDES),
+    gitIg: ignore(),
+    codeupIg: ignore(),
+  };
 
   const files: FileEntry[] = [];
-  await walk(root, '', ig, files, token);
+  await walk(root, '', stack, files, token);
 
   files.sort((a, b) => a.path.localeCompare(b.path));
 
@@ -118,25 +131,47 @@ export async function scanWorkspace(root: vscode.Uri, token?: vscode.Cancellatio
   };
 }
 
-async function loadGitignore(root: vscode.Uri): Promise<Ignore> {
-  const ig = ignore();
+async function loadScopedIgnore(root: vscode.Uri, scopeDir: string, name: string, target: Ignore): Promise<void> {
+  const fileUri = scopeDir
+    ? vscode.Uri.joinPath(root, scopeDir, name)
+    : vscode.Uri.joinPath(root, name);
+  let bytes: Uint8Array;
   try {
-    const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(root, '.gitignore'));
-    ig.add(Buffer.from(bytes).toString('utf8'));
+    bytes = await vscode.workspace.fs.readFile(fileUri);
   } catch {
-    // no .gitignore — fine
+    return; // file does not exist — fine
   }
-  return ig;
+  const text = Buffer.from(bytes).toString('utf8');
+  for (const pattern of parseIgnoreText(text, scopeDir)) target.add(pattern);
+}
+
+/**
+ * Decide whether a path should be walked. .codeupignore wins over
+ * .gitignore at any depth via the library's .test() method; defaults
+ * are non-overridable.
+ */
+function shouldSkip(stack: IgnoreStack, checkPath: string): boolean {
+  if (stack.defaults.ignores(checkPath)) return true;
+  const ci = stack.codeupIg.test(checkPath);
+  if (ci.ignored) return true;
+  if (ci.unignored) return false;
+  return stack.gitIg.ignores(checkPath);
 }
 
 async function walk(
   root: vscode.Uri,
   rel: string,
-  ig: Ignore,
+  stack: IgnoreStack,
   out: FileEntry[],
   token?: vscode.CancellationToken,
 ): Promise<void> {
   if (token?.isCancellationRequested) return;
+  // Load this directory's ignore files before consulting any rule for
+  // its entries — so a parent's .gitignore cannot hide the .codeupignore
+  // that sits beside it.
+  await loadScopedIgnore(root, rel, '.gitignore', stack.gitIg);
+  await loadScopedIgnore(root, rel, '.codeupignore', stack.codeupIg);
+
   const dirUri = rel ? vscode.Uri.joinPath(root, rel) : root;
   let entries: [string, vscode.FileType][];
   try {
@@ -148,10 +183,10 @@ async function walk(
     if (token?.isCancellationRequested) return;
     const childRel = rel ? `${rel}/${name}` : name;
     const checkPath = kind === vscode.FileType.Directory ? `${childRel}/` : childRel;
-    if (ig.ignores(checkPath)) continue;
+    if (shouldSkip(stack, checkPath)) continue;
 
     if (kind === vscode.FileType.Directory) {
-      await walk(root, childRel, ig, out, token);
+      await walk(root, childRel, stack, out, token);
     } else if (kind === vscode.FileType.File) {
       const entry = await fileEntry(root, childRel);
       if (entry) out.push(entry);

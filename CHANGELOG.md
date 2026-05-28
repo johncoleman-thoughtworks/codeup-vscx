@@ -2,6 +2,26 @@
 
 All notable changes to Codeup are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); Codeup uses [Semantic Versioning](https://semver.org/).
 
+## 1.3.0 — 2026-05-28
+
+### Added
+
+- **`.codeupignore` files.** Optional ignore files that work exactly like `.gitignore` and can appear at any depth in the workspace. Use them to exclude paths from Codeup analysis that you want tracked by git (generated source, fixtures, vendored data). `.codeupignore` rules take precedence over `.gitignore` at any depth — a `!keep.snap` in a `.codeupignore` re-includes a file even when a `.gitignore` ignores it. A non-overridable defaults set (`.git`, `node_modules`, `.codeup`, etc.) is always skipped.
+- **Nested `.gitignore` files** are now honoured during scans (previously only the workspace-root `.gitignore` was loaded).
+
+### Security
+
+- Hardened against a malicious workspace shipping crafted `.codeup/findings/*.yaml`:
+  - Trusted-markdown hovers now restrict `command:` URIs to an allowlist of Codeup's own commands; finding text is markdown-escaped before interpolation.
+  - Finding `id` and `location.file` are validated against safe-path rules (no traversal, no separators, no absolute paths), with containment re-checks at the filesystem and editor-open sinks.
+  - `codeup.findingsDir` is now `machine-overridable` scope, and the resolved directory is verified to stay under the workspace root.
+  - VSIX auto-installer now refuses release assets hosted outside a GitHub origin allowlist.
+
+### Catalogue
+
+- Added a **Code security** pattern class — eleven abstract anti-patterns covering trust-boundary, validation, persisted-state, credential, and DoS shapes.
+- Added `log-and-rethrow-cargo-cult` to the exception-handling family.
+
 ## 1.2.1 — 2026-05-22
 
 ### Fixed

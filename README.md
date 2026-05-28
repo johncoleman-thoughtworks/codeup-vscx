@@ -65,7 +65,7 @@ Codeup sends source code to the Anthropic API when it runs the LLM-driven catalo
 
 **What never gets sent:**
 
-- Files excluded by your `.gitignore` or the scanner's default excludes (`node_modules`, `.git`, `dist`, `build`, `target`, `.codeup/` itself, etc.).
+- Files excluded by your `.gitignore`, by a `.codeupignore` (see below), or by the scanner's default excludes (`node_modules`, `.git`, `dist`, `build`, `target`, `.codeup/` itself, etc.).
 - Files over 512 KB on disk or over 60,000 characters at analysis time.
 - Files in a language that has no matching catalogue patterns.
 - Files whose contents are unchanged since the last scan (cache hit — zero API calls).
@@ -100,6 +100,28 @@ Codeup drops a `.gitignore` inside each generated directory (`.codeup/index/` an
 ```
 
 Keep `.codeup/findings/`, `.codeup/knowledge/`, and `.codeup/intent.yaml` **tracked** — they're the parts that travel with the repo and accumulate decisions.
+
+### `.codeupignore`
+
+If you want a file or directory tracked by git but excluded from Codeup analysis — generated source, test fixtures, vendored snapshots, large config files — add a `.codeupignore` next to it.
+
+`.codeupignore` uses the **same syntax and semantics as `.gitignore`** (`ignore` library, gitignore spec). You can place one at any depth in the workspace; patterns apply relative to that file's directory exactly as a `.gitignore` would.
+
+**Precedence:** `.codeupignore` rules **override `.gitignore` rules at any depth**. A `!keep.snap` in a `.codeupignore` brings the file back into the scan even when a `.gitignore` (in the same directory or higher) ignores it. A non-overridable set of defaults (`.git`, `node_modules`, `.codeup`, etc.) is always skipped and cannot be un-ignored.
+
+Example — analyse files that git ignores:
+
+```gitignore
+# .codeupignore at workspace root
+!**/generated/*.ts
+```
+
+Example — skip a directory Codeup would otherwise scan:
+
+```gitignore
+# apps/web/.codeupignore
+fixtures/
+```
 
 ## Commands
 
