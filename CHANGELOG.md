@@ -2,6 +2,12 @@
 
 All notable changes to Codeup are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); Codeup uses [Semantic Versioning](https://semver.org/).
 
+## 1.3.1 — 2026-05-28
+
+### Documentation
+
+- Refreshed the bundled README: catalogue count is now reported as 107 (was 95), and the new **Code security** pattern class (10 patterns) and **log-and-rethrow-cargo-cult** exception pattern are surfaced. The Details tab in the VS Code Extensions panel now matches the catalogue that v1.3.0 already shipped — no functional change.
+
 ## 1.3.0 — 2026-05-28
 
 ### Added
