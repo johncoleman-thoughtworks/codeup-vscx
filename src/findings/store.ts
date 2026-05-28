@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import * as yaml from 'js-yaml';
 import type { KnowledgeStore } from '../knowledge/store';
 import { FINDING_CURRENT_VERSION, FINDING_MIGRATIONS, runMigrations } from '../migrations/runner';
-import { Finding, HistoryEvent, Priority, Severity, Status, validateFinding } from './schema';
+import { Finding, HistoryEvent, Priority, Severity, Status, isSafeIdentifier, isSafeRelativePath, validateFinding } from './schema';
+import * as path from 'path';
 
 function severityToPriority(s: Severity): Priority {
   return s;
@@ -58,7 +59,20 @@ export class FindingsStore {
   private findingsDirUri(): vscode.Uri {
     const cfg = vscode.workspace.getConfiguration('codeup');
     const rel = cfg.get<string>('findingsDir', '.codeup/findings');
-    return vscode.Uri.joinPath(this.root, rel);
+    const fallback = vscode.Uri.joinPath(this.root, '.codeup/findings');
+    if (!isSafeRelativePath(rel)) {
+      this.output.appendLine(`[findings] ignoring unsafe codeup.findingsDir=${JSON.stringify(rel)}; using default`);
+      return fallback;
+    }
+    const candidate = vscode.Uri.joinPath(this.root, rel);
+    // Even after isSafeRelativePath, double-check that the resolved path is
+    // under the workspace root — guards against platform-specific surprises.
+    const rootPath = this.root.fsPath + path.sep;
+    if (!(candidate.fsPath + path.sep).startsWith(rootPath)) {
+      this.output.appendLine(`[findings] codeup.findingsDir resolved outside workspace; using default`);
+      return fallback;
+    }
+    return candidate;
   }
 
   private async reloadAll(): Promise<void> {
@@ -112,9 +126,18 @@ export class FindingsStore {
   }
 
   async save(finding: Finding): Promise<void> {
+    if (!isSafeIdentifier(finding.id)) {
+      throw new Error(`unsafe finding id: ${finding.id}`);
+    }
     const dir = this.findingsDirUri();
     await vscode.workspace.fs.createDirectory(dir);
     const uri = vscode.Uri.joinPath(dir, `${finding.id}.yaml`);
+    // Defence in depth: even if isSafeIdentifier somehow let a traversal
+    // through, refuse to write outside the findings directory.
+    const dirPath = dir.fsPath + path.sep;
+    if (!(uri.fsPath + path.sep).startsWith(dirPath)) {
+      throw new Error(`finding path escapes findings directory: ${uri.fsPath}`);
+    }
     const body = yaml.dump(finding, { lineWidth: 100, noRefs: true });
     await vscode.workspace.fs.writeFile(uri, Buffer.from(body, 'utf8'));
     this.findings.set(finding.id, finding);

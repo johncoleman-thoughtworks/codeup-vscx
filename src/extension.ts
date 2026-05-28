@@ -1,5 +1,7 @@
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { AnthropicClient } from './analyzer/client';
+import { isSafeRelativePath } from './findings/schema';
 import { ProviderFactory } from './analyzer/providerFactory';
 import { DecorationManager } from './decorations';
 import { DetailsView } from './detailsView';
@@ -50,7 +52,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
       if (!finding || !owningRoot) return;
       details.show(id);
+      // Refuse to open files that escape the owning workspace root. This is
+      // enforced at schema validation already, but re-check here so the open
+      // sink is safe even if a finding bypasses validation.
+      if (!isSafeRelativePath(finding.location.file)) {
+        vscode.window.showWarningMessage(`Codeup: refusing to open unsafe path: ${finding.location.file}`);
+        return;
+      }
       const uri = vscode.Uri.joinPath(owningRoot, finding.location.file);
+      const rootPath = owningRoot.fsPath + path.sep;
+      if (!(uri.fsPath + path.sep).startsWith(rootPath)) {
+        vscode.window.showWarningMessage(`Codeup: refusing to open path outside workspace: ${finding.location.file}`);
+        return;
+      }
       try {
         const doc = await vscode.workspace.openTextDocument(uri);
         const editor = await vscode.window.showTextDocument(doc, { preview: false, viewColumn: vscode.ViewColumn.One });

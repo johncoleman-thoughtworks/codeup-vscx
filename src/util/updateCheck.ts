@@ -2,7 +2,7 @@ import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { dueForCheck, isNewer, parseRelease } from './updateCheckPure';
+import { dueForCheck, isAllowedVsixUrl, isNewer, parseRelease } from './updateCheckPure';
 
 const RELEASES_URL = 'https://api.github.com/repos/johncoleman-thoughtworks/codeup-vscx/releases/latest';
 const STATE_KEY_LAST_CHECKED = 'codeup.updateCheck.lastChecked';
@@ -112,6 +112,13 @@ export class UpdateChecker {
   }
 
   private async downloadAndInstall(tag: string, vsixUrl: string): Promise<void> {
+    if (!isAllowedVsixUrl(vsixUrl)) {
+      this.output.appendLine(`[update] refusing to install ${tag}: VSIX URL not in allowlist (${vsixUrl})`);
+      vscode.window.showWarningMessage(
+        `Codeup: refusing to auto-install ${tag} — release asset is not hosted on GitHub. Open the release page to install manually if you trust the source.`,
+      );
+      return;
+    }
     await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,

@@ -135,7 +135,8 @@
         "codeup.findingsDir": {
           "type": "string",
           "default": ".codeup/findings",
-          "description": "Directory (relative to workspace root) where findings are stored."
+          "scope": "machine-overridable",
+          "description": "Directory (relative to workspace root) where findings are stored. Must remain within the workspace root; values that escape it (absolute paths, '..' segments) are ignored and the default is used."
         },
         "codeup.fileSize.warnBytes": {
           "type": "number",

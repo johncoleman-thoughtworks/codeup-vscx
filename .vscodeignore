@@ -23,6 +23,7 @@ dist/test/**
 *.vsix
 PLAN.md
 TESTING.md
+codeup-vscx-findings-*.md
 
 # vsce walks package.json dependencies itself — don't fight it with manual
 # node_modules excludes. resources/ ships by default (no exclusion).

@@ -2,6 +2,10 @@ import * as vscode from 'vscode';
 import { Finding, Severity } from './findings/schema';
 import { WorkspaceStores } from './workspaceStores';
 
+function escapeMarkdown(s: string): string {
+  return s.replace(/[\\`*_{}\[\]()#+\-.!|>]/g, (c) => `\\${c}`);
+}
+
 export class DecorationManager {
   private readonly decorationTypes: Record<Severity, vscode.TextEditorDecorationType>;
   private readonly disposables: vscode.Disposable[] = [];
@@ -68,9 +72,11 @@ export class DecorationManager {
       const endLine = Math.max(line, (f.location.endLine ?? f.location.line ?? 1) - 1);
       const range = new vscode.Range(line, 0, endLine, Number.MAX_SAFE_INTEGER);
       const md = new vscode.MarkdownString(
-        `**${f.category}** — _${f.severity}_\n\n${f.explanation}\n\n[Open finding](command:codeup.findings.openFinding?${encodeURIComponent(JSON.stringify(f.id))})`,
+        `**${escapeMarkdown(f.category)}** — _${f.severity}_\n\n${escapeMarkdown(f.explanation)}\n\n[Open finding](command:codeup.findings.openFinding?${encodeURIComponent(JSON.stringify(f.id))})`,
       );
-      md.isTrusted = true;
+      // Trust only our own command — attacker-controlled `command:` links in
+      // category/explanation cannot fire because they're not on the allowlist.
+      md.isTrusted = { enabledCommands: ['codeup.findings.openFinding'] };
       buckets[f.severity].push({ range, hoverMessage: md });
     }
     for (const sev of ['high', 'medium', 'low'] as Severity[]) {

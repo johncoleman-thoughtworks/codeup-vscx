@@ -57,6 +57,9 @@ export function validateFinding(raw: unknown): { ok: true; value: Finding } | { 
   if (schemaVersion !== 1) push('schemaVersion', `unsupported schemaVersion: ${String(schemaVersion)}`);
 
   const id = str(r.id, 'id', push);
+  if (id && !isSafeIdentifier(id)) {
+    push('id', 'must match [A-Za-z0-9_.-]{1,128} and contain no path separators');
+  }
   const category = str(r.category, 'category', push);
   const severity = enumOf(r.severity, SEVERITIES, 'severity', push);
   const status = enumOf(r.status, STATUSES, 'status', push);
@@ -70,6 +73,9 @@ export function validateFinding(raw: unknown): { ok: true; value: Finding } | { 
     push('location', 'missing location object');
   }
   const file = loc ? str(loc.file, 'location.file', push) : '';
+  if (file && !isSafeRelativePath(file)) {
+    push('location.file', 'must be a workspace-relative POSIX path with no ".." segments, drive letters, or backslashes');
+  }
   const line = loc?.line === undefined ? undefined : num(loc.line, 'location.line', push);
   const endLine = loc?.endLine === undefined ? undefined : num(loc.endLine, 'location.endLine', push);
 
@@ -101,6 +107,24 @@ export function validateFinding(raw: unknown): { ok: true; value: Finding } | { 
       history,
     },
   };
+}
+
+export function isSafeIdentifier(id: string): boolean {
+  return /^[A-Za-z0-9_.-]{1,128}$/.test(id) && id !== '.' && id !== '..';
+}
+
+// Acceptable: POSIX-relative paths like "src/foo.ts" or "__orphan__/x".
+// Rejected: absolute paths, drive letters, backslashes, any ".." segment.
+export function isSafeRelativePath(p: string): boolean {
+  if (p.length === 0 || p.length > 1024) return false;
+  if (p.startsWith('/') || p.startsWith('\\')) return false;
+  if (/^[A-Za-z]:/.test(p)) return false;
+  if (p.includes('\\')) return false;
+  if (p.includes('\0')) return false;
+  for (const seg of p.split('/')) {
+    if (seg === '..') return false;
+  }
+  return true;
 }
 
 function str(v: unknown, path: string, push: (p: string, m: string) => void): string {

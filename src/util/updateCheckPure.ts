@@ -73,3 +73,25 @@ export function parseRelease(raw: unknown): ParsedRelease | undefined {
     prerelease: Boolean(r.prerelease),
   };
 }
+
+const ALLOWED_VSIX_HOSTS = new Set([
+  'github.com',
+  'objects.githubusercontent.com',
+  'release-assets.githubusercontent.com',
+]);
+
+/**
+ * Allowlist for VSIX download origins. The auto-updater refuses to install
+ * any URL that fails this check — without origin pinning, a compromised
+ * release JSON could redirect users to an attacker-controlled host.
+ */
+export function isAllowedVsixUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== 'https:') return false;
+  return ALLOWED_VSIX_HOSTS.has(parsed.hostname);
+}

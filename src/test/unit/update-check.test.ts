@@ -3,9 +3,24 @@ import { test } from 'node:test';
 import {
   compareSemver,
   dueForCheck,
+  isAllowedVsixUrl,
   isNewer,
   parseRelease,
 } from '../../util/updateCheckPure';
+
+test('isAllowedVsixUrl accepts GitHub release asset hosts', () => {
+  assert.equal(isAllowedVsixUrl('https://github.com/org/repo/releases/download/v1/foo.vsix'), true);
+  assert.equal(isAllowedVsixUrl('https://objects.githubusercontent.com/release-assets/x.vsix'), true);
+  assert.equal(isAllowedVsixUrl('https://release-assets.githubusercontent.com/x.vsix'), true);
+});
+
+test('isAllowedVsixUrl rejects non-allowlisted origins', () => {
+  assert.equal(isAllowedVsixUrl('https://evil.example/x.vsix'), false);
+  assert.equal(isAllowedVsixUrl('https://github.com.evil.example/x.vsix'), false);
+  assert.equal(isAllowedVsixUrl('http://github.com/x.vsix'), false);
+  assert.equal(isAllowedVsixUrl('file:///tmp/x.vsix'), false);
+  assert.equal(isAllowedVsixUrl('not a url'), false);
+});
 
 test('compareSemver: basic ordering', () => {
   assert.equal(compareSemver('1.0.0', '1.0.0'), 0);

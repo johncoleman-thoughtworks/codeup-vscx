@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { validateFinding } from '../../findings/schema';
+import { isSafeIdentifier, isSafeRelativePath, validateFinding } from '../../findings/schema';
 
 function valid(): Record<string, unknown> {
   return {
@@ -55,4 +55,43 @@ test('validateFinding accepts missing priority (defaults to medium)', () => {
 test('validateFinding requires a location.file', () => {
   const r = validateFinding({ ...valid(), location: { line: 5 } });
   assert.equal(r.ok, false);
+});
+
+test('isSafeIdentifier accepts hash-style ids', () => {
+  assert.equal(isSafeIdentifier('long-method-abc123def456'), true);
+  assert.equal(isSafeIdentifier('oversized-file.foo'), true);
+});
+
+test('isSafeIdentifier rejects path separators and traversal', () => {
+  assert.equal(isSafeIdentifier('../../etc/passwd'), false);
+  assert.equal(isSafeIdentifier('a/b'), false);
+  assert.equal(isSafeIdentifier('a\\b'), false);
+  assert.equal(isSafeIdentifier('..'), false);
+  assert.equal(isSafeIdentifier(''), false);
+  assert.equal(isSafeIdentifier('a'.repeat(129)), false);
+});
+
+test('isSafeRelativePath accepts workspace-relative paths', () => {
+  assert.equal(isSafeRelativePath('src/foo.ts'), true);
+  assert.equal(isSafeRelativePath('__orphan__/src/foo.ts'), true);
+  assert.equal(isSafeRelativePath('README.md'), true);
+});
+
+test('isSafeRelativePath rejects traversal, absolute, backslash, drive-letter', () => {
+  assert.equal(isSafeRelativePath('../../etc/passwd'), false);
+  assert.equal(isSafeRelativePath('a/../b'), false);
+  assert.equal(isSafeRelativePath('/etc/passwd'), false);
+  assert.equal(isSafeRelativePath('\\foo'), false);
+  assert.equal(isSafeRelativePath('C:/foo'), false);
+  assert.equal(isSafeRelativePath('a\\b'), false);
+  assert.equal(isSafeRelativePath('a\0b'), false);
+});
+
+test('validateFinding rejects unsafe id', () => {
+  assert.equal(validateFinding({ ...valid(), id: '../../pwn' }).ok, false);
+});
+
+test('validateFinding rejects unsafe location.file', () => {
+  assert.equal(validateFinding({ ...valid(), location: { file: '../../etc/passwd' } }).ok, false);
+  assert.equal(validateFinding({ ...valid(), location: { file: '/etc/passwd' } }).ok, false);
 });
